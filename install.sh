@@ -113,7 +113,7 @@ else
 fi
 
 cd "$Z2M_DIR"
-npm ci --silent
+npm install --silent
 log "Zigbee2MQTT dependencies installed ✓"
 
 # Write Zigbee2MQTT config if it doesn't exist
