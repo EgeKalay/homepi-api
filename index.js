@@ -174,3 +174,61 @@ app.listen(3000, () => {
   console.log('HomePi API running on port 3000');
   console.log('Waiting for Zigbee2MQTT device registry...');
 });
+
+// --- Device management ---
+
+// POST /devices/:id/rename — rename a device
+app.post('/devices/:id/rename', (req, res) => {
+  const device = devices[req.params.id];
+  if (!device) return res.status(404).json({ error: 'Device not found' });
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
+
+  const newName = name.trim();
+  const oldId = req.params.id;
+
+  // Tell Zigbee2MQTT to rename the device
+  mqttClient.publish('zigbee2mqtt/bridge/request/device/rename', JSON.stringify({
+    from: oldId,
+    to: newName.toLowerCase().replace(/\s+/g, '_')
+  }));
+
+  // Update local state immediately
+  const newId = newName.toLowerCase().replace(/\s+/g, '_');
+  devices[newId] = { ...device, id: newId, name: newName };
+  delete devices[oldId];
+
+  broadcastState(newId);
+  res.json({ success: true, newId });
+});
+
+// DELETE /devices/:id — remove a device from the network
+app.delete('/devices/:id', (req, res) => {
+  const device = devices[req.params.id];
+  if (!device) return res.status(404).json({ error: 'Device not found' });
+
+  mqttClient.publish('zigbee2mqtt/bridge/request/device/remove', JSON.stringify({
+    id: req.params.id,
+    force: false
+  }));
+
+  delete devices[req.params.id];
+  res.json({ success: true });
+});
+
+// POST /pairing/start — open permit_join for 2 minutes
+app.post('/pairing/start', (req, res) => {
+  mqttClient.publish('zigbee2mqtt/bridge/request/permit_join', JSON.stringify({
+    value: true,
+    time: 120
+  }));
+  res.json({ success: true, duration: 120 });
+});
+
+// POST /pairing/stop — close permit_join
+app.post('/pairing/stop', (req, res) => {
+  mqttClient.publish('zigbee2mqtt/bridge/request/permit_join', JSON.stringify({
+    value: false
+  }));
+  res.json({ success: true });
+});
