@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>HomePi</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600&family=Fira+Code:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --surface3: #242432;
+    --border: rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.1);
+    --text: #f0f0f8;
+    --muted: #55556a;
+    --accent: #e8c547;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --orange: #fb923c;
+  }
+
+  body {
+    background: #060609;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Unbounded', sans-serif;
+    color: var(--text);
+  }
+
+  .tablet {
+    width: 860px;
+    height: 600px;
+    background: var(--bg);
+    border-radius: 24px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 5px #0d0d12, 0 50px 140px rgba(0,0,0,0.9);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 40px 1fr;
+  }
+
+  /* Status bar */
+  .statusbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 22px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'Fira Code', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  .statusbar .time { color: var(--text); font-size: 11px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: all 0.4s; }
+  .dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 18px 0;
+  }
+
+  .brand {
+    padding: 0 16px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+
+  .brand-name { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; }
+  .brand-sub { font-family: 'Fira Code', monospace; font-size: 9px; color: var(--muted); margin-top: 3px; }
+
+  .nav {
+    padding: 7px 10px;
+    margin: 0 6px;
+    border-radius: 8px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+  }
+
+  .nav.active { background: rgba(232,197,71,0.1); color: var(--accent); }
+  .nav:hover:not(.active) { background: var(--surface2); color: var(--text); }
+  .nav-icon { font-size: 13px; width: 16px; text-align: center; }
+
+  /* Main area */
+  .main {
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--bg);
+  }
+
+  .main::-webkit-scrollbar { width: 3px; }
+  .main::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+
+  /* Page header */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .page-title { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+  .all-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .all-toggle-btn {
+    width: 36px; height: 20px;
+    border-radius: 10px;
+    background: var(--surface3);
+    position: relative;
+    transition: background 0.2s;
+    border: 1px solid var(--border2);
+  }
+
+  .all-toggle-btn.on { background: rgba(232,197,71,0.3); border-color: rgba(232,197,71,0.4); }
+
+  .all-toggle-knob {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--muted);
+    position: absolute;
+    top: 2px; left: 2px;
+    transition: all 0.2s;
+  }
+
+  .all-toggle-btn.on .all-toggle-knob { left: 18px; background: var(--accent); }
+
+  /* Light cards */
+  .lights-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeUp 0.3s 0.05s ease both;
+  }
+
+  .light-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    transition: border-color 0.3s;
+  }
+
+  .light-card.on { border-color: rgba(232,197,71,0.2); }
+
+  /* Card top row */
+  .card-top {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .bulb-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+
+  .light-card.on .bulb-icon {
+    background: rgba(232,197,71,0.12);
+    box-shadow: 0 0 16px rgba(232,197,71,0.15);
+  }
+
+  .card-info {}
+  .card-name { font-size: 12px; font-weight: 600; letter-spacing: 0.03em; margin-bottom: 4px; }
+  .card-state {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .state-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: all 0.3s;
+  }
+
+  .light-card.on .state-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+  /* Power toggle */
+  .power-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .light-card.on .power-btn {
+    background: rgba(232,197,71,0.12);
+    border-color: rgba(232,197,71,0.3);
+    color: var(--accent);
+  }
+
+  /* Brightness slider */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .slider-label { font-family: 'Fira Code', monospace; font-size: 9px; color: var(--muted); width: 28px; text-align: right; flex-shrink: 0; }
+
+  .brightness-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface3);
+    outline: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .brightness-slider:disabled { opacity: 0.3; cursor: default; }
+
+  .brightness-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(232,197,71,0.5);
+  }
+
+  .brightness-slider:disabled::-webkit-slider-thumb { background: var(--muted); box-shadow: none; }
+
+  /* Colour swatches */
+  .colour-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .swatch {
+    width: 24px; height: 24px;
+    border-radius: 7px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: white; transform: scale(1.1); }
+  .swatch:disabled { opacity: 0.3; cursor: default; }
+
+  .colour-picker-wrap {
+    position: relative;
+    width: 24px; height: 24px;
+    flex-shrink: 0;
+  }
+
+  .colour-picker-btn {
+    width: 24px; height: 24px;
+    border-radius: 7px;
+    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+
+  .colour-picker-btn:hover { transform: scale(1.15); }
+
+  .colour-picker-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%; height: 100%;
+  }
+
+  /* Sensor cards */
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    animation: fadeUp 0.3s 0.1s ease both;
+  }
+
+  .sensor-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .sensor-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(96,165,250,0.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .sensor-value { font-size: 20px; font-weight: 600; color: var(--blue); line-height: 1; margin-bottom: 4px; }
+  .sensor-label { font-family: 'Fira Code', monospace; font-size: 9px; color: var(--muted); }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.8;
+    font-family: 'Fira Code', monospace;
+  }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="tablet">
+  <div class="statusbar">
+    <span class="time" id="clock">00:00</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="dateLabel" style="color:var(--muted)"></span>
+      <div class="dot" id="connDot"></div>
+      <span id="connLabel">connecting</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="brand" onclick="window.location.href='/index.html'">
+        <div class="brand-name">HOMEPI</div>
+        <div class="brand-sub" id="lightsOnLabel">— lights on</div>
+      </div>
+      <div class="nav" onclick="window.location.href='/index.html'"><span class="nav-icon">⚡</span> DASHBOARD</div>
+      <div class="nav active"><span class="nav-icon">💡</span> LIGHTING</div>
+      <div class="nav"><span class="nav-icon">🌡</span> CLIMATE</div>
+      <div class="nav"><span class="nav-icon">🔒</span> SECURITY</div>
+      <div class="nav"><span class="nav-icon">🎵</span> MEDIA</div>
+      <div class="nav" onclick="window.location.href='/devices.html'"><span class="nav-icon">📡</span> DEVICES</div>
+    </div>
+
+    <!-- Main -->
+    <div class="main" id="main">
+      <div class="page-header">
+        <div class="page-title">Lighting Control</div>
+        <div class="all-toggle" id="allToggle" onclick="toggleAll()">
+          ALL
+          <div class="all-toggle-btn" id="allToggleBtn">
+            <div class="all-toggle-knob"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lights-grid" id="lightsGrid">
+        <div class="empty" id="emptyState">No lights found.<br>Pair a device from the Devices page.</div>
+      </div>
+
+      <div id="sensorSection" style="display:none">
+        <div class="section-label" style="margin-bottom:10px">Sensors</div>
+        <div class="sensor-grid" id="sensorGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = `http://${window.location.hostname}:3000`;
+  const WS_URL = `ws://${window.location.hostname}:3001`;
+
+  let devices = {};
+  let pendingBrightness = {};
+  let rafPending = {};
+
+  const COLOURS = [
+    { name: 'warm',   hex: '#ffcc66', r: 255, g: 180, b: 60  },
+    { name: 'white',  hex: '#f5f0e8', r: 245, g: 240, b: 232 },
+    { name: 'cool',   hex: '#cce0ff', r: 180, g: 210, b: 255 },
+    { name: 'red',    hex: '#ff6060', r: 255, g: 60,  b: 60  },
+    { name: 'orange', hex: '#ff9944', r: 255, g: 140, b: 50  },
+    { name: 'green',  hex: '#44dd88', r: 50,  g: 200, b: 100 },
+    { name: 'blue',   hex: '#4488ff', r: 60,  g: 120, b: 255 },
+    { name: 'purple', hex: '#aa66ff', r: 160, g: 80,  b: 255 },
+    { name: 'pink',   hex: '#ff66aa', r: 255, g: 80,  b: 160 },
+  ];
+
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    document.getElementById('dateLabel').textContent =
+      `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  function setStatus(ok) {
+    document.getElementById('connDot').className = 'dot' + (ok ? ' live' : '');
+    document.getElementById('connLabel').textContent = ok ? 'live' : 'offline';
+  }
+
+  // All lights toggle
+  function toggleAll() {
+    const lights = Object.values(devices).filter(d => d.type === 'light');
+    const anyOn = lights.some(d => d.state === 'ON');
+    lights.forEach(d => sendCommand(d.id, { state: anyOn ? 'OFF' : 'ON' }));
+  }
+
+  function updateAllToggle() {
+    const lights = Object.values(devices).filter(d => d.type === 'light');
+    const anyOn = lights.some(d => d.state === 'ON');
+    const btn = document.getElementById('allToggleBtn');
+    if (btn) btn.className = 'all-toggle-btn' + (anyOn ? ' on' : '');
+    const onCount = lights.filter(d => d.state === 'ON').length;
+    document.getElementById('lightsOnLabel').textContent =
+      `${onCount} light${onCount !== 1 ? 's' : ''} on`;
+  }
+
+  // Send command
+  async function sendCommand(id, cmd) {
+    try {
+      await fetch(`${API}/devices/${id}/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cmd)
+      });
+    } catch(e) {}
+  }
+
+  // Render everything
+  function render() {
+    const lights  = Object.values(devices).filter(d => d.type === 'light');
+    const sensors = Object.values(devices).filter(d => d.type === 'sensor');
+
+    const grid = document.getElementById('lightsGrid');
+    const empty = document.getElementById('emptyState');
+
+    empty.style.display = lights.length === 0 ? 'block' : 'none';
+
+    // Add/update light cards
+    lights.forEach(d => {
+      const existing = document.getElementById(`lc-${d.id}`);
+      if (existing) {
+        updateCard(existing, d);
+      } else {
+        grid.appendChild(buildLightCard(d));
+      }
+    });
+
+    // Remove stale
+    grid.querySelectorAll('.light-card').forEach(c => {
+      if (!devices[c.id.replace('lc-', '')]) c.remove();
+    });
+
+    // Sensors
+    const sensorSection = document.getElementById('sensorSection');
+    const sensorGrid = document.getElementById('sensorGrid');
+    if (sensors.length > 0) {
+      sensorSection.style.display = 'block';
+      sensors.forEach(d => {
+        const existing = document.getElementById(`sc-${d.id}`);
+        if (existing) {
+          const val = existing.querySelector('.sensor-value');
+          if (val && d.temperature !== null) val.textContent = `${d.temperature?.toFixed(1)}°`;
+        } else {
+          sensorGrid.appendChild(buildSensorCard(d));
+        }
+      });
+    } else {
+      sensorSection.style.display = 'none';
+    }
+
+    updateAllToggle();
+  }
+
+  function updateCard(card, d) {
+    const isOn = d.state === 'ON';
+    card.className = `light-card ${isOn ? 'on' : ''}`;
+
+    const slider = card.querySelector('.brightness-slider');
+    const pct = card.querySelector('.slider-label');
+    const pwr = card.querySelector('.power-btn');
+    const stateTxt = card.querySelector('.state-text');
+
+    if (slider && !slider.matches(':active')) {
+      const bPct = Math.round(((d.brightness || 254) / 254) * 100);
+      slider.value = bPct;
+      slider.disabled = !isOn;
+      if (pct) pct.textContent = `${bPct}%`;
+    }
+
+    if (pwr) pwr.style.opacity = '1';
+    if (stateTxt) stateTxt.textContent = isOn ? `ON · ${Math.round(((d.brightness||254)/254)*100)}%` : 'OFF';
+
+    card.querySelectorAll('.swatch').forEach(s => s.disabled = !isOn);
+    const cpInput = card.querySelector('.colour-picker-input');
+    if (cpInput) cpInput.disabled = !isOn;
+  }
+
+  function buildLightCard(d) {
+    const isOn = d.state === 'ON';
+    const bPct = Math.round(((d.brightness || 254) / 254) * 100);
+
+    const card = document.createElement('div');
+    card.className = `light-card ${isOn ? 'on' : ''}`;
+    card.id = `lc-${d.id}`;
+
+    const swatchHtml = COLOURS.map(c =>
+      `<div class="swatch" style="background:${c.hex}" title="${c.name}"
+        onclick="setColour('${d.id}', ${c.r}, ${c.g}, ${c.b}, this)"
+        ${!isOn ? 'style="pointer-events:none;opacity:0.3"' : ''}></div>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="bulb-icon">💡</div>
+        <div class="card-info">
+          <div class="card-name">${d.name}</div>
+          <div class="card-state">
+            <div class="state-dot"></div>
+            <span class="state-text">${isOn ? `ON · ${bPct}%` : 'OFF'}</span>
+          </div>
+        </div>
+        <div class="power-btn" onclick="togglePower('${d.id}')">⏻</div>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">${bPct}%</span>
+        <input type="range" class="brightness-slider" min="1" max="100" value="${bPct}"
+          ${!isOn ? 'disabled' : ''}
+          oninput="onBrightnessInput('${d.id}', this)">
+      </div>
+      <div class="colour-row">
+        ${swatchHtml}
+        <div class="colour-picker-wrap" title="Custom colour">
+          <div class="colour-picker-btn"></div>
+          <input type="color" class="colour-picker-input" ${!isOn ? 'disabled' : ''}
+            onchange="onColourPicker('${d.id}', this)">
+        </div>
+      </div>
+    `;
+
+    return card;
+  }
+
+  function buildSensorCard(d) {
+    const card = document.createElement('div');
+    card.className = 'sensor-card';
+    card.id = `sc-${d.id}`;
+    card.innerHTML = `
+      <div class="sensor-icon">🌡</div>
+      <div>
+        <div class="sensor-value">${d.temperature !== null ? `${d.temperature?.toFixed(1)}°` : '—'}</div>
+        <div class="sensor-label">${d.name}</div>
+      </div>
+    `;
+    return card;
+  }
+
+  // Controls
+  function togglePower(id) {
+    const d = devices[id];
+    if (!d) return;
+    const newState = d.state === 'ON' ? 'OFF' : 'ON';
+    devices[id].state = newState;
+    render();
+    sendCommand(id, { state: newState });
+  }
+
+  function onBrightnessInput(id, slider) {
+    const pct = parseInt(slider.value);
+    const label = slider.closest('.slider-row').querySelector('.slider-label');
+    if (label) label.textContent = `${pct}%`;
+
+    const card = document.getElementById(`lc-${id}`);
+    const stateTxt = card?.querySelector('.state-text');
+    if (stateTxt) stateTxt.textContent = `ON · ${pct}%`;
+
+    pendingBrightness[id] = pct;
+    if (!rafPending[id]) {
+      rafPending[id] = requestAnimationFrame(() => {
+        sendCommand(id, { brightness: pendingBrightness[id] });
+        delete rafPending[id];
+      });
+    }
+  }
+
+  function setColour(id, r, g, b, el) {
+    const card = document.getElementById(`lc-${id}`);
+    card?.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    el?.classList.add('active');
+    sendCommand(id, { color: { r, g, b } });
+  }
+
+  function onColourPicker(id, input) {
+    const hex = input.value;
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    const card = document.getElementById(`lc-${id}`);
+    card?.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    sendCommand(id, { color: { r, g, b } });
+  }
+
+  // Fetch
+  async function fetchDevices() {
+    try {
+      const res = await fetch(`${API}/devices`);
+      const data = await res.json();
+      data.forEach(d => {
+        devices[d.id] = { ...devices[d.id], ...d };
+      });
+      render();
+      setStatus(true);
+    } catch(e) {
+      setStatus(false);
+    }
+  }
+
+  // WebSocket
+  function connectWS() {
+    const ws = new WebSocket(WS_URL);
+    ws.onmessage = (e) => {
+      try {
+        const { deviceId, state } = JSON.parse(e.data);
+        devices[deviceId] = { ...devices[deviceId], ...state, id: deviceId };
+        render();
+      } catch(e) {}
+    };
+    ws.onclose = () => setTimeout(connectWS, 3000);
+    ws.onerror = () => ws.close();
+  }
+
+  fetchDevices();
+  connectWS();
+  setInterval(fetchDevices, 15000);
+</script>
+</body>
+</html>
