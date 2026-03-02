@@ -397,18 +397,9 @@
 
   <div class="layout">
     <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="brand" onclick="window.location.href='/index.html'">
-        <div class="brand-name">HOMEPI</div>
-        <div class="brand-sub" id="lightsOnLabel">— lights on</div>
-      </div>
-      <div class="nav" onclick="window.location.href='/index.html'"><span class="nav-icon">⚡</span> DASHBOARD</div>
-      <div class="nav active"><span class="nav-icon">💡</span> LIGHTING</div>
-      <div class="nav"><span class="nav-icon">🌡</span> CLIMATE</div>
-      <div class="nav"><span class="nav-icon">🔒</span> SECURITY</div>
-      <div class="nav"><span class="nav-icon">🎵</span> MEDIA</div>
-      <div class="nav" onclick="window.location.href='/devices.html'"><span class="nav-icon">📡</span> DEVICES</div>
-    </div>
+        <div class="sidebar" id="sidebar"></div>
+
+</div>
 
     <!-- Main -->
     <div class="main" id="main">
@@ -485,8 +476,8 @@
     const btn = document.getElementById('allToggleBtn');
     if (btn) btn.className = 'all-toggle-btn' + (anyOn ? ' on' : '');
     const onCount = lights.filter(d => d.state === 'ON').length;
-    document.getElementById('lightsOnLabel').textContent =
-      `${onCount} light${onCount !== 1 ? 's' : ''} on`;
+    setSidebarSub(
+      `${onCount} light${onCount !== 1 ? 's' : ''} on`);
   }
 
   // Send command
@@ -707,5 +698,7 @@
   connectWS();
   setInterval(fetchDevices, 15000);
 </script>
+<script src="/sidebar.js"></script>
+<script>renderSidebar("lighting");</script>
 </body>
 </html>

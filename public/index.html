@@ -318,6 +318,63 @@
   .activity-text strong { color: var(--text); font-weight: 400; }
   .activity-time { font-size: 7px; color: var(--surface3); }
 
+  /* Camera thumbnail in security panel */
+  .cam-thumb {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    transition: border-color 0.2s;
+  }
+
+  .cam-thumb:hover { border-color: rgba(232,197,71,0.3); }
+
+  .cam-thumb-inner {
+    width: 100%; height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cam-no-signal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cam-icon { font-size: 22px; opacity: 0.25; }
+
+  .cam-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 7px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    opacity: 0.5;
+  }
+
+  .cam-badge {
+    position: absolute;
+    top: 6px; right: 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: 7px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(248,113,113,0.15);
+    color: var(--red);
+    letter-spacing: 0.08em;
+  }
+
+  .cam-badge.live-active {
+    background: rgba(74,222,128,0.15);
+    color: var(--green);
+  }
+
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -348,6 +405,7 @@
       <div class="nav"><span class="nav-icon">🔒</span> SECURITY</div>
       <div class="nav"><span class="nav-icon">🎵</span> MEDIA</div>
       <div class="nav" onclick="window.location.href='/devices.html'"><span class="nav-icon">📡</span> DEVICES</div>
+      <div class="nav" onclick="window.location.href='/camera.html'"><span class="nav-icon">📷</span> CAMERAS</div>
     </div>
 
     <div class="main">
@@ -394,12 +452,19 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">Security</div>
-            <div class="panel-link">VIEW →</div>
+            <div class="panel-link" onclick="window.location.href='/camera.html'">CAMERAS →</div>
           </div>
-          <div class="sec-row"><span class="sec-row-icon">🚪</span><span class="sec-row-name">Front Door</span><span class="sec-badge sec-locked">Locked</span></div>
-          <div class="sec-row"><span class="sec-row-icon">🪟</span><span class="sec-row-name">Back Window</span><span class="sec-badge sec-closed">Closed</span></div>
-          <div class="sec-row"><span class="sec-row-icon">📷</span><span class="sec-row-name">Entrance Cam</span><span class="sec-badge sec-live">Live</span></div>
-          <div class="sec-row"><span class="sec-row-icon">🚗</span><span class="sec-row-name">Garage</span><span class="sec-badge sec-closed">Closed</span></div>
+          <!-- Camera thumbnail -->
+          <div class="cam-thumb" onclick="window.location.href='/camera.html'" title="Open camera view">
+            <div class="cam-thumb-inner">
+              <div class="cam-no-signal">
+                <span class="cam-icon">📷</span>
+                <span class="cam-label">CAM 1 — NOT CONFIGURED</span>
+              </div>
+              <div class="cam-badge">LIVE</div>
+            </div>
+          </div>
+
         </div>
       </div>
 

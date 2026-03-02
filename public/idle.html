@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>HomePi — Idle</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Fira+Code:wght@300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #08080c;
+    --text: #d8d8e8;
+    --muted: #3a3a50;
+    --accent: #e8c547;
+    --dim: #1a1a26;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--text);
+    cursor: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ── Grain overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* ── Ambient glow ── */
+  .glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    animation: drift 20s ease-in-out infinite;
+  }
+
+  .glow-1 {
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(232,197,71,0.04), transparent 70%);
+    top: -200px; left: -100px;
+    animation-delay: 0s;
+  }
+
+  .glow-2 {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(96,165,250,0.03), transparent 70%);
+    bottom: -150px; right: -100px;
+    animation-delay: -10s;
+  }
+
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0); }
+    33%       { transform: translate(40px, -30px); }
+    66%       { transform: translate(-20px, 20px); }
+  }
+
+  /* ── Main layout ── */
+  .screen {
+    width: 100vw; height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10vh 10vw;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Top: date ── */
+  .date-line {
+    font-family: 'Fira Code', monospace;
+    font-size: clamp(11px, 1.4vw, 16px);
+    font-weight: 300;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+    animation: fadeIn 2s ease both;
+  }
+
+  /* ── Center: time ── */
+  .time-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    animation: fadeIn 2s 0.3s ease both;
+  }
+
+  .time {
+    font-size: clamp(80px, 18vw, 220px);
+    font-weight: 300;
+    line-height: 0.85;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    position: relative;
+  }
+
+  /* Subtle colon pulse */
+  .colon {
+    display: inline-block;
+    animation: pulse 2s ease-in-out infinite;
+    color: var(--muted);
+    margin: 0 -0.02em;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50%       { opacity: 0.8; }
+  }
+
+  .time-sub {
+    font-family: 'Fira Code', monospace;
+    font-size: clamp(10px, 1.2vw, 15px);
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    margin-top: 2vh;
+    text-transform: uppercase;
+  }
+
+  /* ── Bottom: status bar ── */
+  .bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    animation: fadeIn 2s 0.6s ease both;
+  }
+
+  .temp-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .temp-label {
+    font-family: 'Fira Code', monospace;
+    font-size: clamp(9px, 1vw, 13px);
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .temp-value {
+    font-size: clamp(28px, 5vw, 64px);
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .temp-value em {
+    font-style: normal;
+    font-size: 0.45em;
+    color: var(--muted);
+    vertical-align: top;
+    margin-top: 0.2em;
+    display: inline-block;
+  }
+
+  /* Lights status */
+  .lights-status {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+  }
+
+  .lights-label {
+    font-family: 'Fira Code', monospace;
+    font-size: clamp(9px, 1vw, 13px);
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .lights-row {
+    display: flex;
+    gap: clamp(6px, 1vw, 12px);
+    align-items: center;
+  }
+
+  .light-dot {
+    width: clamp(8px, 1.2vw, 14px);
+    height: clamp(8px, 1.2vw, 14px);
+    border-radius: 50%;
+    background: var(--dim);
+    border: 1px solid var(--muted);
+    transition: all 0.5s;
+  }
+
+  .light-dot.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(232,197,71,0.5);
+  }
+
+  /* ── Tap to wake ── */
+  .tap-hint {
+    position: fixed;
+    bottom: 4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Fira Code', monospace;
+    font-size: clamp(9px, 1vw, 12px);
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    animation: breathe 4s ease-in-out infinite;
+    z-index: 10;
+  }
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.2; }
+    50%       { opacity: 0.5; }
+  }
+
+  /* ── Transition out ── */
+  .screen.leaving {
+    animation: leaveOut 0.5s ease forwards;
+  }
+
+  @keyframes leaveOut {
+    to { opacity: 0; transform: scale(1.02); }
+  }
+
+  /* ── Fade in ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Screensaver dimming ── */
+  .screen.dimmed .time { color: rgba(216,216,232,0.25); }
+  .screen.dimmed .date-line,
+  .screen.dimmed .time-sub,
+  .screen.dimmed .temp-value,
+  .screen.dimmed .bottom { opacity: 0.15; }
+  .screen.dimmed { transition: all 3s ease; }
+</style>
+</head>
+<body>
+
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<div class="screen" id="screen">
+
+  <div class="date-line" id="dateLine">—</div>
+
+  <div class="time-wrap">
+    <div class="time" id="clock">
+      <span id="hours">00</span><span class="colon">:</span><span id="minutes">00</span>
+    </div>
+    <div class="time-sub" id="timeSub">—</div>
+  </div>
+
+  <div class="bottom">
+    <div class="temp-block">
+      <div class="temp-label">Inside</div>
+      <div class="temp-value" id="tempDisplay">—<em>°C</em></div>
+    </div>
+    <div class="lights-status">
+      <div class="lights-label">Lights</div>
+      <div class="lights-row" id="lightsRow"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="tap-hint">tap anywhere to open</div>
+
+<script>
+  const API = `http://${window.location.hostname}:3000`;
+
+  // ── Clock ──
+  const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2,'0');
+    const m = now.getMinutes().toString().padStart(2,'0');
+    const ampm = now.getHours() < 12 ? 'Morning' : now.getHours() < 17 ? 'Afternoon' : 'Evening';
+
+    document.getElementById('hours').textContent = h;
+    document.getElementById('minutes').textContent = m;
+    document.getElementById('dateLine').textContent =
+      `${DAYS[now.getDay()]}  ·  ${now.getDate()} ${MONTHS[now.getMonth()]}  ·  ${now.getFullYear()}`;
+    document.getElementById('timeSub').textContent = `Good ${ampm}`;
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ── Fetch device state ──
+  async function fetchState() {
+    try {
+      const res = await fetch(`${API}/devices`);
+      const devices = await res.json();
+
+      // Temperature
+      const tempDevice = devices.find(d => d.type === 'sensor' || d.temperature !== undefined);
+      if (tempDevice && tempDevice.temperature !== undefined) {
+        document.getElementById('tempDisplay').innerHTML =
+          `${tempDevice.temperature.toFixed(1)}<em>°C</em>`;
+      }
+
+      // Lights
+      const lights = devices.filter(d => d.type === 'light');
+      const row = document.getElementById('lightsRow');
+      row.innerHTML = lights.map(l =>
+        `<div class="light-dot ${l.state === 'ON' ? 'on' : ''}" title="${l.name}"></div>`
+      ).join('');
+
+    } catch(e) {
+      // API unreachable — fail silently on idle screen
+    }
+  }
+
+  fetchState();
+  setInterval(fetchState, 10000);
+
+  // ── Auto-dim after 5 minutes of no interaction ──
+  let dimTimer = null;
+  const screen = document.getElementById('screen');
+
+  function resetDim() {
+    screen.classList.remove('dimmed');
+    clearTimeout(dimTimer);
+    dimTimer = setTimeout(() => screen.classList.add('dimmed'), 5 * 60 * 1000);
+  }
+
+  resetDim();
+  document.addEventListener('touchstart', resetDim);
+  document.addEventListener('mousemove', resetDim);
+
+  // ── Tap anywhere → go to dashboard ──
+  document.addEventListener('touchend', navigate);
+  document.addEventListener('click', navigate);
+
+  function navigate() {
+    screen.classList.add('leaving');
+    setTimeout(() => {
+      window.location.href = '/index.html';
+    }, 450);
+  }
+</script>
+</body>
+</html>

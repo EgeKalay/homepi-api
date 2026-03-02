@@ -487,18 +487,9 @@
 
   <div class="layout">
     <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="brand" onclick="window.location.href='/index.html'">
-        <div class="brand-name">HOMEPI</div>
-        <div class="brand-sub" id="deviceCount">— devices</div>
-      </div>
-      <div class="nav" onclick="window.location.href='/index.html'"><span class="nav-icon">⚡</span> DASHBOARD</div>
-      <div class="nav"><span class="nav-icon">💡</span> LIGHTING</div>
-      <div class="nav"><span class="nav-icon">🌡</span> CLIMATE</div>
-      <div class="nav"><span class="nav-icon">🔒</span> SECURITY</div>
-      <div class="nav"><span class="nav-icon">🎵</span> MEDIA</div>
-      <div class="nav active"><span class="nav-icon">📡</span> DEVICES</div>
-    </div>
+        <div class="sidebar" id="sidebar"></div>
+
+</div>
 
     <!-- Main -->
     <div class="main">
@@ -805,5 +796,7 @@
   connectWS();
   setInterval(fetchDevices, 15000);
 </script>
+<script src="/sidebar.js"></script>
+<script>renderSidebar("devices");</script>
 </body>
 </html>
