@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>HomePi — Idle</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Fira+Code:wght@300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400&family=Fira+Code:wght@300&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
     --bg: #08080c;
     --text: #d8d8e8;
-    --muted: #3a3a50;
+    --muted: #6a6a88;
     --accent: #e8c547;
     --dim: #1a1a26;
   }
@@ -20,7 +20,7 @@
     width: 100%; height: 100%;
     overflow: hidden;
     background: var(--bg);
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'Outfit', sans-serif;
     color: var(--text);
     cursor: none;
     user-select: none;
@@ -99,9 +99,9 @@
 
   .time {
     font-size: clamp(80px, 18vw, 220px);
-    font-weight: 300;
+    font-weight: 200;
     line-height: 0.85;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: var(--text);
     position: relative;
   }
@@ -166,6 +166,54 @@
     vertical-align: top;
     margin-top: 0.2em;
     display: inline-block;
+  }
+
+  /* Weather */
+  .weather-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .weather-label {
+    font-family: 'Fira Code', monospace;
+    font-size: clamp(9px, 1vw, 13px);
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .weather-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4em;
+  }
+
+  .weather-temp {
+    font-size: clamp(28px, 5vw, 64px);
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .weather-temp em {
+    font-style: normal;
+    font-size: 0.45em;
+    color: var(--muted);
+    vertical-align: top;
+    margin-top: 0.2em;
+    display: inline-block;
+  }
+
+  .weather-detail {
+    font-family: 'Fira Code', monospace;
+    font-size: clamp(9px, 1vw, 13px);
+    font-weight: 300;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 2px;
   }
 
   /* Lights status */
@@ -267,9 +315,13 @@
   </div>
 
   <div class="bottom">
-    <div class="temp-block">
-      <div class="temp-label">Inside</div>
-      <div class="temp-value" id="tempDisplay">—<em>°C</em></div>
+    <div class="weather-block">
+      <div class="weather-label" id="weatherLabel">Outside</div>
+      <div class="weather-main">
+        <div class="weather-temp" id="weatherTemp">—<em>°C</em></div>
+      </div>
+      <div class="weather-detail" id="weatherCondition">—</div>
+      <div class="weather-detail" id="weatherWind">—</div>
     </div>
     <div class="lights-status">
       <div class="lights-label">Lights</div>
@@ -303,6 +355,72 @@
 
   updateClock();
   setInterval(updateClock, 1000);
+
+  // ── Weather (Open-Meteo, no API key needed) ──
+  const WMO = {
+    0: 'Clear sky', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
+    45: 'Foggy', 48: 'Icy fog',
+    51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
+    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
+    71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
+    80: 'Showers', 81: 'Heavy showers', 82: 'Violent showers',
+    85: 'Snow showers', 86: 'Heavy snow showers',
+    95: 'Thunderstorm', 96: 'Thunderstorm w/ hail', 99: 'Thunderstorm w/ hail',
+  };
+
+  const WMO_ICON = {
+    0: '☀️', 1: '🌤', 2: '⛅', 3: '☁️',
+    45: '🌫', 48: '🌫',
+    51: '🌦', 53: '🌦', 55: '🌧',
+    61: '🌧', 63: '🌧', 65: '🌧',
+    71: '🌨', 73: '❄️', 75: '❄️', 77: '❄️',
+    80: '🌦', 81: '🌧', 82: '⛈',
+    85: '🌨', 86: '🌨',
+    95: '⛈', 96: '⛈', 99: '⛈',
+  };
+
+  async function fetchWeather() {
+    const lat = localStorage.getItem('homepi_lat');
+    const lon = localStorage.getItem('homepi_lon');
+    const city = localStorage.getItem('homepi_city');
+
+    // Hide weather block entirely if no city set
+    if (!lat || !lon) {
+      document.querySelector('.weather-block').style.visibility = 'hidden';
+      return;
+    }
+    document.querySelector('.weather-block').style.visibility = 'visible';
+
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&current=temperature_2m,weathercode,windspeed_10m,winddirection_10m&timezone=auto&wind_speed_unit=ms`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const c = data.current;
+
+      const icon = WMO_ICON[c.weathercode] ?? '—';
+      const condition = WMO[c.weathercode] ?? 'Unknown';
+      const windDir = degToCompass(c.winddirection_10m);
+
+      document.getElementById('weatherLabel').textContent = city || 'Outside';
+      document.getElementById('weatherTemp').innerHTML =
+        `${Math.round(c.temperature_2m)}<em>°C</em>`;
+      document.getElementById('weatherCondition').textContent =
+        `${icon}  ${condition}`;
+      document.getElementById('weatherWind').textContent =
+        `↗ ${c.windspeed_10m} m/s  ${windDir}`;
+    } catch(e) {
+      // fail silently
+    }
+  }
+
+  function degToCompass(deg) {
+    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    return dirs[Math.round(deg / 45) % 8];
+  }
+
+  fetchWeather();
+  setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min
 
   // ── Fetch device state ──
   async function fetchState() {

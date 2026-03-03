@@ -65,48 +65,13 @@
 
   /* Layout */
   .layout {
+    height: 100%;
     display: grid;
-    grid-template-columns: 160px 1fr;
+    grid-template-columns: var(--sidebar-width, 160px) 1fr;
     overflow: hidden;
   }
 
   /* Sidebar */
-  .sidebar {
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 18px 0;
-  }
-
-  .brand {
-    padding: 0 16px 16px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
-    cursor: pointer;
-  }
-
-  .brand-name { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; }
-  .brand-sub { font-family: 'Fira Code', monospace; font-size: 9px; color: var(--muted); margin-top: 3px; }
-
-  .nav {
-    padding: 7px 10px;
-    margin: 0 6px;
-    border-radius: 8px;
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.15s;
-  }
-
-  .nav.active { background: rgba(232,197,71,0.1); color: var(--accent); }
-  .nav:hover:not(.active) { background: var(--surface2); color: var(--text); }
-  .nav-icon { font-size: 13px; width: 16px; text-align: center; }
-
   /* Main area */
   .main {
     overflow-y: auto;
@@ -396,12 +361,8 @@
   </div>
 
   <div class="layout">
-    <!-- Sidebar -->
-        <div class="sidebar" id="sidebar"></div>
+    <div id="sidebar" class="sidebar"></div>
 
-</div>
-
-    <!-- Main -->
     <div class="main" id="main">
       <div class="page-header">
         <div class="page-title">Lighting Control</div>
@@ -699,6 +660,7 @@
   setInterval(fetchDevices, 15000);
 </script>
 <script src="/sidebar.js"></script>
-<script>renderSidebar("lighting");</script>
+<script></script>
+<script>initSidebar("lighting");</script>
 </body>
 </html>

@@ -64,46 +64,9 @@
 
   .layout {
     display: grid;
-    grid-template-columns: 160px 1fr;
+    grid-template-columns: var(--sidebar-width, 160px) 1fr;
     overflow: hidden;
   }
-
-  .sidebar {
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 18px 0;
-  }
-
-  .brand {
-    padding: 0 16px 16px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
-    cursor: pointer;
-  }
-
-  .brand-name { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; }
-  .brand-sub { font-family: 'Fira Code', monospace; font-size: 9px; color: var(--muted); margin-top: 3px; }
-
-  .nav {
-    padding: 7px 10px;
-    margin: 0 6px;
-    border-radius: 8px;
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.15s;
-  }
-
-  .nav.active { background: rgba(232,197,71,0.1); color: var(--accent); }
-  .nav:hover:not(.active) { background: var(--surface2); color: var(--text); }
-  .nav-icon { font-size: 13px; width: 16px; text-align: center; }
-
   .main {
     overflow-y: auto;
     padding: 18px 20px;
@@ -394,19 +357,7 @@
   </div>
 
   <div class="layout">
-    <div class="sidebar">
-      <div class="brand" onclick="window.location.href='/idle.html'">
-        <div class="brand-name">HOMEPI</div>
-        <div class="brand-sub" id="lightsOnLabel">— lights on</div>
-      </div>
-      <div class="nav active"><span class="nav-icon">⚡</span> DASHBOARD</div>
-      <div class="nav" onclick="window.location.href='/lighting.html'"><span class="nav-icon">💡</span> LIGHTING</div>
-      <div class="nav"><span class="nav-icon">🌡</span> CLIMATE</div>
-      <div class="nav"><span class="nav-icon">🔒</span> SECURITY</div>
-      <div class="nav"><span class="nav-icon">🎵</span> MEDIA</div>
-      <div class="nav" onclick="window.location.href='/devices.html'"><span class="nav-icon">📡</span> DEVICES</div>
-      <div class="nav" onclick="window.location.href='/camera.html'"><span class="nav-icon">📷</span> CAMERAS</div>
-    </div>
+    <div id="sidebar" class="sidebar"></div>
 
     <div class="main">
 
@@ -479,8 +430,8 @@
           </div>
           <div class="climate-row"><span>Temperature</span><span class="climate-val live" id="climateTemp">—</span></div>
           <div class="climate-row"><span>Humidity</span><span class="climate-val live" id="climateHumidity">—</span></div>
-          <div class="climate-row"><span>Thermostat</span><span class="climate-val mock">21°C</span></div>
-          <div class="climate-row"><span>Air Quality</span><span class="climate-val mock">Good</span></div>
+          <div class="climate-row"><span>Outside</span><span class="climate-val mock" id="weatherTemp">—</span></div>
+          <div class="climate-row"><span>Conditions</span><span class="climate-val mock" id="weatherCond">—</span></div>
         </div>
 
         <!-- Activity feed (mock + real events via WS) -->
@@ -533,16 +484,18 @@
     document.getElementById('statLightsOn').textContent = onCount;
     document.getElementById('statLightsSub').textContent = `of ${lights.length} total`;
     document.getElementById('statDevices').textContent = all.length;
-    document.getElementById('lightsOnLabel').textContent = `${onCount} light${onCount !== 1 ? 's' : ''} on`;
 
     // Sensor stats
-    const sensor = sensors.find(s => s.temperature !== null);
+    const sensor = sensors.find(s => s.temperature != null);
     if (sensor) {
-      document.getElementById('statTemp').textContent = `${sensor.temperature.toFixed(1)}°`;
-      document.getElementById('statTempSub').textContent = sensor.name.toLowerCase();
-      document.getElementById('climateTemp').textContent = `${sensor.temperature.toFixed(1)}°C`;
-      document.getElementById('climateHumidity').textContent =
-        sensor.humidity !== null ? `${Math.round(sensor.humidity)}%` : '—';
+      if (sensor.temperature != null) {
+        document.getElementById('statTemp').textContent = `${sensor.temperature.toFixed(1)}°`;
+        document.getElementById('statTempSub').textContent = sensor.name.toLowerCase();
+        document.getElementById('climateTemp').textContent = `${sensor.temperature.toFixed(1)}°C`;
+      }
+      if (sensor.humidity != null) {
+        document.getElementById('climateHumidity').textContent = `${Math.round(sensor.humidity)}%`;
+      }
     }
 
     // Lights panel
@@ -623,10 +576,49 @@
     ws.onerror = () => ws.close();
   }
 
+  // ── Weather ──────────────────────────────────────────────────────────────
+  const WMO_ICON = {
+    0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',
+    51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',
+    71:'🌨',73:'❄️',75:'❄️',77:'❄️',80:'🌦',81:'🌧',82:'⛈',
+    85:'🌨',86:'🌨',95:'⛈',96:'⛈',99:'⛈',
+  };
+  const WMO_LABEL = {
+    0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',
+    45:'Foggy',48:'Icy fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+    61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',
+    75:'Heavy snow',77:'Snow grains',80:'Showers',81:'Heavy showers',
+    82:'Violent showers',85:'Snow showers',86:'Heavy snow showers',
+    95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm',
+  };
+
+  async function fetchWeather() {
+    const lat = localStorage.getItem('homepi_lat');
+    const lon = localStorage.getItem('homepi_lon');
+    if (!lat || !lon) return;
+    try {
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&current=temperature_2m,weathercode&timezone=auto`
+      );
+      const data = await res.json();
+      const c = data.current;
+      const icon = WMO_ICON[c.weathercode] ?? '';
+      const label = WMO_LABEL[c.weathercode] ?? '—';
+      document.getElementById('weatherTemp').textContent = `${Math.round(c.temperature_2m)}°C`;
+      document.getElementById('weatherCond').textContent = `${icon} ${label}`;
+    } catch(e) {}
+  }
+
+  fetchWeather();
+  setInterval(fetchWeather, 10 * 60 * 1000);
+
   addActivity('HomePi online', false);
   fetchDevices();
   connectWS();
   setInterval(fetchDevices, 15000);
 </script>
+<script src="/sidebar.js"></script>
+<script>initSidebar("dashboard");</script>
 </body>
 </html>
