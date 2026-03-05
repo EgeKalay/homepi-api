@@ -35,6 +35,7 @@
     }
     .nav.active { background: rgba(232,197,71,0.1); color: var(--accent); }
     .nav:hover:not(.active) { background: var(--surface2); color: var(--text); }
+    .nav.nav-disabled { opacity: 0.35; cursor: default; pointer-events: none; }
     .nav-icon  { font-size: 13px; width: 16px; min-width: 16px; text-align: center; }
     .nav-label { transition: opacity 0.15s; }
     .sidebar.collapsed .nav-label { opacity: 0; pointer-events: none; }
@@ -63,11 +64,13 @@ const SIDEBAR_HTML = `
   </div>
   <div class="nav" data-page="dashboard" onclick="navigate('/index.html')"><span class="nav-icon">⚡</span><span class="nav-label">DASHBOARD</span></div>
   <div class="nav" data-page="lighting"  onclick="navigate('/lighting.html')"><span class="nav-icon">💡</span><span class="nav-label">LIGHTING</span></div>
-  <div class="nav" data-page="climate"><span class="nav-icon">🌡</span><span class="nav-label">CLIMATE</span></div>
-  <div class="nav" data-page="security"><span class="nav-icon">🔒</span><span class="nav-label">SECURITY</span></div>
-  <div class="nav" data-page="media"><span class="nav-icon">🎵</span><span class="nav-label">MEDIA</span></div>
+  <div class="nav" data-page="weather" onclick="navigate('weather')"><span class="nav-icon">🌤</span><span class="nav-label">WEATHER</span></div>
   <div class="nav" data-page="devices"  onclick="navigate('/devices.html')"><span class="nav-icon">📡</span><span class="nav-label">DEVICES</span></div>
   <div class="nav" data-page="cameras"  onclick="navigate('/camera.html')"><span class="nav-icon">📷</span><span class="nav-label">CAMERAS</span></div>
+  <div class="sidebar-spacer"></div>
+  <div class="nav nav-disabled" data-page="climate"><span class="nav-icon">🌡</span><span class="nav-label">CLIMATE</span></div>
+  <div class="nav nav-disabled" data-page="security"><span class="nav-icon">🔒</span><span class="nav-label">SECURITY</span></div>
+  <div class="nav nav-disabled" data-page="media"><span class="nav-icon">🎵</span><span class="nav-label">MEDIA</span></div>
   <div class="sidebar-spacer"></div>
   <div class="nav" onclick="openSettings()"><span class="nav-icon">⚙</span><span class="nav-label">SETTINGS</span></div>
   <div class="sidebar-toggle" onclick="toggleSidebar()"><span id="sidebarToggleIcon">◀</span></div>

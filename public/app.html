@@ -328,6 +328,77 @@ body { background:var(--bg); width:100vw; height:100vh; overflow:hidden;
 
 @keyframes fadeUp { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
 @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+
+/* ── WEATHER ANIMATED BACKGROUND ──────────────────────────────────── */
+#page-weather.active { position:relative; }
+.wx-bg { position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+.wx-bg-gradient { position:absolute; inset:0; opacity:0.07; transition:background 3s ease; }
+.wx-bg-orb { position:absolute; border-radius:50%; filter:blur(80px); opacity:0; transition:opacity 2s ease; animation:wxOrbDrift 8s ease-in-out infinite alternate; }
+.wx-bg-orb-1 { width:400px; height:400px; top:-100px; left:-80px; }
+.wx-bg-orb-2 { width:300px; height:300px; bottom:-80px; right:-60px; animation-delay:-4s; }
+.wx-page { position:relative; z-index:1; }
+@keyframes wxOrbDrift { from { transform:translate(0,0) scale(1); } to { transform:translate(30px,20px) scale(1.1); } }
+@keyframes wxRainDrop { from { transform:translateY(-10px); opacity:0; } 60% { opacity:.4; } to { transform:translateY(100vh); opacity:0; } }
+@keyframes wxSnowDrift { from { transform:translateY(-10px) translateX(0); opacity:0; } 60% { opacity:.5; } to { transform:translateY(100vh) translateX(40px); opacity:0; } }
+@keyframes wxSunPulse { 0%,100% { opacity:.06; transform:scale(1); } 50% { opacity:.1; transform:scale(1.15); } }
+.wx-sun-ring { position:absolute; border-radius:50%; border:1px solid rgba(232,197,71,.15); animation:wxSunPulse 3s ease-in-out infinite; }
+.wx-particle { position:absolute; pointer-events:none; border-radius:50%; }
+/* ── WEATHER PAGE ──────────────────────────────────────────────────── */
+#page-weather.active { display:flex; flex-direction:column; padding:0; overflow:hidden; }
+.wx-page { display:flex; flex-direction:column; height:100%; overflow:hidden; }
+.wx-header { padding:20px 24px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.wx-location { font-family:'Fira Code',monospace; font-size:9px; letter-spacing:.12em; color:var(--text); text-transform:uppercase; text-shadow:0 1px 8px rgba(0,0,0,.8); }
+.wx-unit-toggle { display:flex; gap:2px; }
+.wx-unit-btn { font-family:'Fira Code',monospace; font-size:8px; padding:3px 8px; border-radius:4px; cursor:pointer; border:1px solid var(--border2); color:var(--muted); background:transparent; transition:all .15s; letter-spacing:.06em; }
+.wx-unit-btn.active { background:rgba(232,197,71,.12); color:var(--accent); border-color:rgba(232,197,71,.3); }
+.wx-hero { padding:16px 24px 18px; display:flex; align-items:flex-end; gap:24px; flex-shrink:0; border-bottom:1px solid var(--border); }
+.wx-hero-left { display:flex; align-items:center; gap:16px; }
+.wx-hero-icon { font-size:52px; line-height:1; filter:drop-shadow(0 0 20px rgba(232,197,71,.2)); }
+.wx-hero-temp { font-size:60px; font-weight:700; letter-spacing:-.03em; line-height:1; color:var(--text); text-shadow:0 2px 20px rgba(0,0,0,.5); }
+.wx-hero-unit { font-size:22px; color:rgba(255,255,255,.6); font-weight:300; align-self:flex-start; margin-top:8px; }
+.wx-hero-right { display:flex; flex-direction:column; gap:5px; padding-bottom:4px; }
+.wx-hero-desc { font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; text-shadow:0 1px 8px rgba(0,0,0,.6); }
+.wx-hero-meta { display:flex; flex-wrap:wrap; gap:10px 18px; }
+.wx-meta-item { font-family:'Fira Code',monospace; font-size:9px; color:rgba(255,255,255,.7); text-shadow:0 1px 6px rgba(0,0,0,.7); }
+.wx-meta-val { color:var(--text); font-weight:600; }
+.wx-section-label { font-family:'Fira Code',monospace; font-size:8px; letter-spacing:.12em; color:rgba(255,255,255,.5); padding:12px 24px 6px; text-transform:uppercase; flex-shrink:0; text-shadow:0 1px 6px rgba(0,0,0,.6); }
+.wx-hourly-scroll { overflow-x:auto; padding:0 24px 12px; flex-shrink:0; scrollbar-width:none; cursor:grab; user-select:none; }
+.wx-hourly-scroll::-webkit-scrollbar { display:none; }
+.wx-hourly { display:flex; gap:6px; }
+.wx-hour { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px; border-radius:10px; background:rgba(20,22,30,.7); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.08); min-width:56px; flex-shrink:0; transition:border-color .15s,background .2s; }
+.wx-hour:hover { border-color:rgba(255,255,255,.15); background:rgba(30,34,45,.8); }
+.wx-hour.wx-now { border-color:rgba(232,197,71,.4); background:rgba(232,197,71,.08); }
+.wx-hour-time { font-family:'Fira Code',monospace; font-size:7px; color:rgba(255,255,255,.5); letter-spacing:.04em; }
+.wx-hour-icon { font-size:16px; line-height:1; }
+.wx-hour-temp { font-size:11px; font-weight:600; color:var(--text); text-shadow:0 1px 4px rgba(0,0,0,.5); }
+.wx-hour-precip { font-family:'Fira Code',monospace; font-size:7px; color:#60a5fa; }
+.wx-hour-precip.dry { color:transparent; }
+
+.wx-day.wx-today { border-color:rgba(232,197,71,.25); background:rgba(232,197,71,.04); }
+.wx-day-name { font-size:10px; font-weight:600; color:var(--text); }
+.wx-day-icon { font-size:16px; text-align:center; }
+
+.wx-day-temps { display:flex; justify-content:flex-end; align-items:center; gap:6px; font-family:'Fira Code',monospace; font-size:9px; }
+.wx-day-high { color:var(--text); font-weight:600; }
+.wx-day-low { color:var(--muted); }
+.wx-day-precip { font-family:'Fira Code',monospace; font-size:8px; color:#60a5fa; text-align:right; }
+.wx-day-precip.dry { color:var(--muted); opacity:.3; }
+.wx-daily-scroll { overflow-x:auto; padding:0 24px 20px; flex-shrink:0; scrollbar-width:none; cursor:grab; user-select:none; }
+.wx-daily-scroll::-webkit-scrollbar { display:none; }
+.wx-daily { display:flex; flex-direction:row; gap:8px; }
+.wx-day { display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 12px; border-radius:12px; background:rgba(20,22,30,.7); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.08); min-width:100px; flex:1; transition:border-color .2s,background .2s; cursor:default; }
+.wx-day:hover { border-color:rgba(255,255,255,.15); background:rgba(30,34,45,.8); }
+.wx-day.wx-today { border-color:rgba(232,197,71,.4); background:rgba(232,197,71,.08); }
+.wx-day-name { font-family:'Fira Code',monospace; font-size:8px; letter-spacing:.08em; color:rgba(255,255,255,.5); text-transform:uppercase; }
+.wx-day.wx-today .wx-day-name { color:var(--accent); }
+.wx-day-icon { font-size:28px; line-height:1; }
+.wx-day-high { font-size:15px; font-weight:700; color:var(--text); text-shadow:0 1px 6px rgba(0,0,0,.5); }
+.wx-day-low { font-family:'Fira Code',monospace; font-size:10px; color:rgba(255,255,255,.4); }
+.wx-day-precip { font-family:'Fira Code',monospace; font-size:8px; color:#60a5fa; }
+.wx-day-precip.dry { color:transparent; }
+.wx-no-location { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:12px; font-family:'Fira Code',monospace; font-size:9px; letter-spacing:.1em; color:var(--muted); text-align:center; line-height:1.8; }
+.wx-loading { display:flex; align-items:center; justify-content:center; flex:1; font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); letter-spacing:.1em; }
 </style>
 </head>
 <body>
@@ -462,6 +533,20 @@ body { background:var(--bg); width:100vw; height:100vh; overflow:hidden;
         </div>
         <div class="device-grid" id="deviceGrid">
           <div class="empty" id="devEmptyState">No devices found.<br>Tap ADD DEVICE to pair your first device.</div>
+        </div>
+      </div>
+
+
+      <!-- ══════════════════ WEATHER ══════════════════ -->
+      <div class="page" id="page-weather">
+        <div class="wx-bg" id="wxBg">
+          <div class="wx-bg-gradient" id="wxBgGradient"></div>
+          <div class="wx-bg-orb wx-bg-orb-1" id="wxOrb1"></div>
+          <div class="wx-bg-orb wx-bg-orb-2" id="wxOrb2"></div>
+          <div id="wxParticles"></div>
+        </div>
+        <div class="wx-page" id="wxPage">
+          <div class="wx-loading" id="wxLoading">LOADING FORECAST…</div>
         </div>
       </div>
 
@@ -692,8 +777,13 @@ body { background:var(--bg); width:100vw; height:100vh; overflow:hidden;
 const API    = `http://${window.location.hostname}:3000`;
 const WS_URL = `ws://${window.location.hostname}:3001`;
 
-// Single shared device store — never re-created, only mutated
-let devices = {};
+// Global state — declared here to avoid 'before initialization' errors
+let devices          = {};
+let rooms            = [];
+let configuredCameras = {};
+let wxData           = null;
+let wxLoaded         = false;
+let wxUnit           = localStorage.getItem('homepi_wx_unit') || 'C';
 
 // ── Clock ─────────────────────────────────────────────────────────────
 function updateClock() {
@@ -715,7 +805,7 @@ function setStatus(ok) {
 }
 
 // ── SPA Router ────────────────────────────────────────────────────────
-const PAGES = ['dashboard','lighting','devices','cameras'];
+const PAGES = ['dashboard','lighting','devices','cameras','weather'];
 let currentPage = 'dashboard';
 
 function navigate(key) {
@@ -750,6 +840,10 @@ function renderCurrentPage(fullRebuild = false) {
   if (currentPage === 'dashboard') renderDashboard();
   if (currentPage === 'lighting')  renderLighting(fullRebuild);
   if (currentPage === 'devices')   renderDevicesPage();
+  if (currentPage === 'weather') {
+    if (!wxLoaded) fetchWeatherForecast();
+    else renderWeatherPage(fullRebuild);
+  }
 }
 
 // ── Fetch + WebSocket ─────────────────────────────────────────────────
@@ -776,6 +870,7 @@ async function fetchDevices() {
       if (!data.find(d => d.id === id)) { delete devices[id]; structureChanged = true; }
     });
     if (structureChanged) renderCurrentPage(true);
+    else renderCurrentPage(false); // always re-render to keep UI fresh
     setStatus(true);
   } catch(e) { setStatus(false); }
 }
@@ -870,12 +965,66 @@ setInterval(fetchWeather, 10*60*1000);
 // Snapshot refresh — only ticks when dashboard is active
 setInterval(() => {
   if (currentPage !== 'dashboard') return;
-  const img = document.querySelector('img.dash-cam-snap');
-  if (!img) return;
-  const url = new URL(img.src);
-  url.searchParams.set('t', Date.now());
-  img.src = url.toString();
-}, 5000); // refresh every 5 seconds
+  updateDashCam();
+}, 5000);
+
+let _dashCamOnline = null; // track state to avoid redundant DOM updates
+
+function updateDashCam() {
+  const cam1     = configuredCameras[1];
+  const inner    = document.getElementById('dashCamInner');
+  const badge    = document.getElementById('dashCamBadge');
+  const noSignal = document.getElementById('dashCamNoSignal');
+  const label    = document.getElementById('dashCamLabel');
+  if (!inner) return;
+
+  if (!cam1) {
+    // No camera configured
+    if (_dashCamOnline === 'none') return;
+    _dashCamOnline = 'none';
+    badge.textContent = 'NOT SET UP';
+    badge.style.background = 'rgba(100,100,100,.2)';
+    badge.style.color = 'var(--muted)';
+    label.innerHTML = `<span style="font-size:9px">No camera configured</span>`;
+    noSignal.style.display = 'flex';
+    const img = inner.querySelector('img.dash-cam-snap');
+    if (img) img.remove();
+    return;
+  }
+
+  // Probe snapshot endpoint
+  const host = window.location.hostname;
+  const snapUrl = `http://${host}:1984/api/frame.jpeg?src=cam1&t=${Date.now()}`;
+  fetch(snapUrl).then(r => {
+    if (!r.ok) throw new Error('offline');
+    // Online
+    _dashCamOnline = 'online';
+    badge.textContent = 'LIVE';
+    badge.style.background = 'rgba(74,222,128,.15)';
+    badge.style.color = 'var(--green)';
+    noSignal.style.display = 'none';
+    label.textContent = cam1.name;
+    inner.querySelector('iframe')?.remove();
+    let img = inner.querySelector('img.dash-cam-snap');
+    if (!img) {
+      img = document.createElement('img');
+      img.className = 'dash-cam-snap';
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+      inner.appendChild(img);
+    }
+    img.src = snapUrl;
+  }).catch(() => {
+    // Offline
+    if (_dashCamOnline === 'offline') return; // already showing offline, don't flicker
+    _dashCamOnline = 'offline';
+    badge.textContent = 'OFFLINE';
+    badge.style.background = 'rgba(248,113,113,.15)';
+    badge.style.color = 'var(--red)';
+    inner.querySelector('img.dash-cam-snap')?.remove();
+    noSignal.style.display = 'flex';
+    label.innerHTML = `<span style="font-size:9px;opacity:.6">${cam1.name} · unreachable</span>`;
+  });
+}
 
 function renderDashboard() {
   if (!document.getElementById('statLightsOn')) return; // page not active
@@ -897,39 +1046,8 @@ function renderDashboard() {
       document.getElementById('climateHumidity').textContent = `${Math.round(sensor.humidity)}%`;
   }
 
-  // Dashboard camera thumbnail — use snapshot instead of live stream to avoid buffering
-  const cam1 = configuredCameras[1];
-  const dashInner  = document.getElementById('dashCamInner');
-  const dashBadge  = document.getElementById('dashCamBadge');
-  const dashLabel  = document.getElementById('dashCamLabel');
-  if (cam1 && dashInner) {
-    dashLabel.textContent = cam1.name;
-    dashBadge.textContent = 'LIVE';
-    dashBadge.style.background = 'rgba(74,222,128,.15)';
-    dashBadge.style.color = 'var(--green)';
-    document.getElementById('dashCamNoSignal').style.display = 'none';
-    // Remove any old iframe
-    const oldIframe = dashInner.querySelector('iframe');
-    if (oldIframe) oldIframe.remove();
-    // Use a snapshot image instead — no buffering, no white flash
-    let img = dashInner.querySelector('img.dash-cam-snap');
-    if (!img) {
-      img = document.createElement('img');
-      img.className = 'dash-cam-snap';
-      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
-      dashInner.appendChild(img);
-    }
-    // Refresh snapshot — append timestamp to bust cache
-    img.src = `http://${window.location.hostname}:1984/api/frame.jpeg?src=cam1&t=${Date.now()}`;
-  } else if (dashInner) {
-    dashLabel.textContent = 'NO CAMERA';
-    dashBadge.textContent = 'OFFLINE';
-    dashBadge.style.background = 'rgba(248,113,113,.15)';
-    dashBadge.style.color = 'var(--red)';
-    const img = dashInner.querySelector('img.dash-cam-snap');
-    if (img) img.remove();
-    document.getElementById('dashCamNoSignal').style.display = 'flex';
-  }
+  // Dashboard camera thumbnail
+  updateDashCam();
 
   const panel = document.getElementById('dashLightsPanel');
   if (lights.length === 0) {
@@ -1589,11 +1707,301 @@ async function stopPairing() {
 
 function updateTimer(){const m=Math.floor(scanSeconds/60),s=(scanSeconds%60).toString().padStart(2,'0');document.getElementById('scanTimer').textContent=`${m}:${s}`;}
 
+
+// ══════════════════════════════════════════════════════════════════════
+// WEATHER PAGE
+// ══════════════════════════════════════════════════════════════════════
+
+
+const WMO_ICON_NIGHT = {0:'🌙',1:'🌙',2:'🌤',3:'☁️',45:'🌫',51:'🌦',61:'🌧',71:'🌨',80:'🌦',95:'⛈'};
+
+function wxConvert(c) { return wxUnit === 'C' ? Math.round(c) : Math.round(c * 9/5 + 32); }
+function wxUnitLabel() { return `°${wxUnit}`; }
+
+function wxDayName(dateStr, i) {
+  if (i === 0) return 'Today';
+  if (i === 1) return 'Tomorrow';
+  return new Date(dateStr).toLocaleDateString('en', { weekday: 'long' });
+}
+
+function wxHourLabel(isoStr) {
+  const d = new Date(isoStr);
+  const h = d.getHours();
+  if (h === 0)  return '12 AM';
+  if (h === 12) return '12 PM';
+  return h < 12 ? `${h} AM` : `${h-12} PM`;
+}
+
+async function fetchWeatherForecast() {
+  const lat = localStorage.getItem('homepi_lat');
+  const lon = localStorage.getItem('homepi_lon');
+  if (!lat || !lon) { renderWeatherPage(true); return; }
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&current=temperature_2m,apparent_temperature,weathercode,windspeed_10m,relativehumidity_2m,uv_index` +
+      `&hourly=temperature_2m,weathercode,precipitation_probability` +
+      `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset` +
+      `&timezone=auto&forecast_days=7`;
+    const res  = await fetch(url);
+    wxData = await res.json();
+    wxLoaded = true;
+    if (currentPage === 'weather') renderWeatherPage(true);
+  } catch(e) {}
+}
+
+function renderWeatherPage(fullRebuild = false) {
+  const container = document.getElementById('wxPage');
+  if (!container) return;
+
+  const lat = localStorage.getItem('homepi_lat');
+  const city = localStorage.getItem('homepi_city') || '';
+
+  if (!lat) {
+    container.innerHTML = `
+      <div class="wx-no-location">
+        <span style="font-size:32px;opacity:.3">🌍</span>
+        NO LOCATION SET<br>
+        <span style="font-size:8px">Go to Settings and enter your city</span><br>
+        <span class="panel-link" style="cursor:pointer;opacity:.8" onclick="openSettings()">OPEN SETTINGS →</span>
+      </div>`;
+    return;
+  }
+
+  if (!wxData) {
+    container.innerHTML = `<div class="wx-loading">LOADING FORECAST…</div>`;
+    fetchWeatherForecast();
+    return;
+  }
+
+  const c   = wxData.current;
+  const d   = wxData.daily;
+  const h   = wxData.hourly;
+  const now = new Date();
+  const currentHourIdx = wxData.hourly.time.findIndex(t => new Date(t) >= now);
+  const startIdx = Math.max(0, currentHourIdx - 1);
+
+  // Build hourly items (next 24h)
+  const hourlyItems = [];
+  for (let i = startIdx; i < Math.min(startIdx + 25, h.time.length); i++) {
+    const isNow = i === startIdx;
+    hourlyItems.push(`
+      <div class="wx-hour ${isNow?'wx-now':''}">
+        <div class="wx-hour-time">${isNow ? 'NOW' : wxHourLabel(h.time[i])}</div>
+        <div class="wx-hour-icon">${WMO_ICON[h.weathercode[i]]||'—'}</div>
+        <div class="wx-hour-temp">${wxConvert(h.temperature_2m[i])}${wxUnitLabel()}</div>
+        <div class="wx-hour-precip ${h.precipitation_probability[i]<10?'dry':''}">${h.precipitation_probability[i]<10?'·':h.precipitation_probability[i]+'%'}</div>
+      </div>`);
+  }
+
+  // Build daily items
+  const allMaxTemps = d.temperature_2m_max;
+  const allMinTemps = d.temperature_2m_min;
+  const rangeMin = Math.min(...allMinTemps);
+  const rangeMax = Math.max(...allMaxTemps);
+
+  const dailyItems = d.time.map((date, i) => {
+    const high = wxConvert(d.temperature_2m_max[i]);
+    const low  = wxConvert(d.temperature_2m_min[i]);
+
+    const precip = d.precipitation_probability_max[i];
+    return `
+      <div class="wx-day ${i===0?'wx-today':''}">
+        <div class="wx-day-name">${wxDayName(date, i)}</div>
+        <div class="wx-day-icon">${WMO_ICON[d.weathercode[i]]||'—'}</div>
+
+        <div class="wx-day-temps">
+          <span class="wx-day-high">${high}${wxUnitLabel()}</span>
+          <span class="wx-day-low">${low}${wxUnitLabel()}</span>
+        </div>
+        <div class="wx-day-precip ${precip<10?'dry':''}">${precip<10?'—':precip+'%'}</div>
+      </div>`;
+  }).join('');
+
+  // Sunrise/sunset for today
+  const sunrise = new Date(d.sunrise[0]).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',hour12:false});
+  const sunset  = new Date(d.sunset[0]).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',hour12:false});
+
+  container.innerHTML = `
+    <div class="wx-header">
+      <div class="wx-location">${city || 'Weather Forecast'}</div>
+      <div class="wx-unit-toggle">
+        <div class="wx-unit-btn ${wxUnit==='C'?'active':''}" onclick="wxSetUnit('C')">°C</div>
+        <div class="wx-unit-btn ${wxUnit==='F'?'active':''}" onclick="wxSetUnit('F')">°F</div>
+      </div>
+    </div>
+
+    <div class="wx-hero">
+      <div class="wx-hero-left">
+        <div class="wx-hero-icon">${WMO_ICON[c.weathercode]||'—'}</div>
+        <div style="display:flex;align-items:flex-start">
+          <div class="wx-hero-temp">${wxConvert(c.temperature_2m)}</div>
+          <div class="wx-hero-unit">${wxUnitLabel()}</div>
+        </div>
+      </div>
+      <div class="wx-hero-right">
+        <div class="wx-hero-desc">${WMO_LABEL[c.weathercode]||'—'}</div>
+        <div class="wx-hero-meta">
+          <div class="wx-meta-item">Feels like <span class="wx-meta-val">&nbsp;${wxConvert(c.apparent_temperature)}${wxUnitLabel()}</span></div>
+          <div class="wx-meta-item">Humidity <span class="wx-meta-val">&nbsp;${c.relativehumidity_2m}%</span></div>
+          <div class="wx-meta-item">Wind <span class="wx-meta-val">&nbsp;${Math.round(c.windspeed_10m)} km/h</span></div>
+          <div class="wx-meta-item">UV <span class="wx-meta-val">&nbsp;${Math.round(c.uv_index||0)}</span></div>
+          <div class="wx-meta-item">🌅 <span class="wx-meta-val">&nbsp;${sunrise}</span></div>
+          <div class="wx-meta-item">🌇 <span class="wx-meta-val">&nbsp;${sunset}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wx-section-label">Next 24 Hours</div>
+    <div class="wx-hourly-scroll">
+      <div class="wx-hourly">${hourlyItems.join('')}</div>
+    </div>
+
+    <div class="wx-section-label">7-Day Forecast</div>
+    <div class="wx-daily-scroll" style="flex:1">
+      <div class="wx-daily">${dailyItems}</div>
+    </div>
+  `;
+  wxUpdateBackground(c.weathercode);
+  requestAnimationFrame(() => {
+    enableDragScroll(document.querySelector('.wx-hourly-scroll'));
+    enableDragScroll(document.querySelector('.wx-daily-scroll'));
+  });
+}
+
+
+// Drag-to-scroll for horizontal strips
+function enableDragScroll(el) {
+  if (!el) return;
+  let isDown = false, startX, scrollLeft;
+  el.addEventListener('mousedown', e => {
+    isDown = true; el.style.cursor = 'grabbing';
+    startX = e.pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+  });
+  el.addEventListener('mouseleave', () => { isDown = false; el.style.cursor = ''; });
+  el.addEventListener('mouseup',    () => { isDown = false; el.style.cursor = ''; });
+  el.addEventListener('mousemove',  e => {
+    if (!isDown) return;
+    e.preventDefault();
+    el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX);
+  });
+}
+function wxSetUnit(unit) {
+  wxUnit = unit;
+  localStorage.setItem('homepi_wx_unit', unit);
+  renderWeatherPage(true);
+}
+
+// Refresh forecast every 30 min
+setInterval(() => {
+  if (currentPage === 'weather') fetchWeatherForecast();
+}, 30 * 60 * 1000);
+
+
+function wxUpdateBackground(weathercode) {
+  const gradient = document.getElementById('wxBgGradient');
+  const orb1     = document.getElementById('wxOrb1');
+  const orb2     = document.getElementById('wxOrb2');
+  const particles = document.getElementById('wxParticles');
+  if (!gradient || !orb1) return;
+
+  // Clear old particles
+  particles.innerHTML = '';
+
+  // Condition buckets
+  const isSunny    = [0,1].includes(weathercode);
+  const isPartly   = [2].includes(weathercode);
+  const isOvercast = [3,45].includes(weathercode);
+  const isRainy    = [51,61,80].includes(weathercode);
+  const isStormy   = [95].includes(weathercode);
+  const isSnowy    = [71].includes(weathercode);
+
+  if (isSunny) {
+    gradient.style.background = 'radial-gradient(ellipse at 20% 20%, rgba(232,197,71,1) 0%, transparent 70%)';
+    orb1.style.background = 'rgba(232,197,71,1)';
+    orb2.style.background = 'rgba(255,160,50,1)';
+    orb1.style.opacity = '1';
+    orb2.style.opacity = '1';
+    // Sun rings
+    for (let i = 0; i < 4; i++) {
+      const ring = document.createElement('div');
+      ring.className = 'wx-sun-ring';
+      const size = 200 + i * 80;
+      ring.style.cssText = `width:${size}px;height:${size}px;top:${-size/2+80}px;left:${-size/2+80}px;animation-delay:${i*0.7}s;`;
+      particles.appendChild(ring);
+    }
+  } else if (isPartly) {
+    gradient.style.background = 'radial-gradient(ellipse at 15% 15%, rgba(232,197,71,1) 0%, transparent 60%)';
+    orb1.style.background = 'rgba(232,197,71,1)';
+    orb2.style.background = 'rgba(100,130,180,1)';
+    orb1.style.opacity = '1';
+    orb2.style.opacity = '1';
+  } else if (isOvercast) {
+    gradient.style.background = 'radial-gradient(ellipse at 50% 0%, rgba(100,120,160,1) 0%, transparent 70%)';
+    orb1.style.background = 'rgba(80,100,140,1)';
+    orb2.style.background = 'rgba(60,80,120,1)';
+    orb1.style.opacity = '1';
+    orb2.style.opacity = '1';
+  } else if (isRainy) {
+    gradient.style.background = 'radial-gradient(ellipse at 30% 0%, rgba(60,90,160,1) 0%, transparent 70%)';
+    orb1.style.background = 'rgba(50,80,160,1)';
+    orb2.style.background = 'rgba(40,60,120,1)';
+    orb1.style.opacity = '1';
+    orb2.style.opacity = '1';
+    // Rain drops
+    for (let i = 0; i < 18; i++) {
+      const drop = document.createElement('div');
+      drop.className = 'wx-particle';
+      const left = Math.random() * 100;
+      const delay = Math.random() * 4;
+      const dur   = 1.5 + Math.random() * 2;
+      drop.style.cssText = `width:1px;height:${8+Math.random()*10}px;left:${left}%;top:-20px;background:rgba(100,150,255,0.4);border-radius:1px;animation:wxRainDrop ${dur}s ${delay}s linear infinite;`;
+      particles.appendChild(drop);
+    }
+  } else if (isStormy) {
+    gradient.style.background = 'radial-gradient(ellipse at 50% 0%, rgba(80,40,120,1) 0%, transparent 70%)';
+    orb1.style.background = 'rgba(80,40,140,1)';
+    orb2.style.background = 'rgba(60,20,100,1)';
+    orb1.style.opacity = '1';
+    orb2.style.opacity = '1';
+    for (let i = 0; i < 20; i++) {
+      const drop = document.createElement('div');
+      drop.className = 'wx-particle';
+      const left = Math.random() * 100;
+      const delay = Math.random() * 3;
+      const dur   = 1 + Math.random() * 1.5;
+      drop.style.cssText = `width:1px;height:${10+Math.random()*14}px;left:${left}%;top:-20px;background:rgba(150,100,255,0.35);border-radius:1px;animation:wxRainDrop ${dur}s ${delay}s linear infinite;`;
+      particles.appendChild(drop);
+    }
+  } else if (isSnowy) {
+    gradient.style.background = 'radial-gradient(ellipse at 40% 0%, rgba(160,190,220,1) 0%, transparent 70%)';
+    orb1.style.background = 'rgba(160,190,230,1)';
+    orb2.style.background = 'rgba(180,210,240,1)';
+    orb1.style.opacity = '1';
+    orb2.style.opacity = '1';
+    for (let i = 0; i < 20; i++) {
+      const flake = document.createElement('div');
+      flake.className = 'wx-particle';
+      const size  = 2 + Math.random() * 3;
+      const left  = Math.random() * 100;
+      const delay = Math.random() * 5;
+      const dur   = 3 + Math.random() * 4;
+      flake.style.cssText = `width:${size}px;height:${size}px;left:${left}%;top:-10px;background:rgba(220,235,255,0.6);animation:wxSnowDrift ${dur}s ${delay}s linear infinite;`;
+      particles.appendChild(flake);
+    }
+  } else {
+    // Default neutral
+    gradient.style.background = 'radial-gradient(ellipse at 30% 20%, rgba(80,100,130,1) 0%, transparent 60%)';
+    orb1.style.background = 'rgba(70,90,120,1)';
+    orb2.style.background = 'rgba(50,70,100,1)';
+    orb1.style.opacity = '1';
+    orb2.style.opacity = '1';
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // CAMERAS
 // ══════════════════════════════════════════════════════════════════════
-let configuredCameras = {}; // slot -> camera object
-let rooms = []; // loaded from API
 
 async function loadRooms() {
   try {
@@ -1644,16 +2052,41 @@ function selectCam(slot) {
   document.getElementById('camName').textContent = cam ? cam.name : `CAM ${slot}`;
 
   if (cam) {
-    overlay.style.display = 'none';
-    dot.classList.add('active');
-    label.textContent = 'LIVE';
-    let iframe = focus.querySelector('iframe');
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;inset:0;';
-      focus.appendChild(iframe);
-    }
-    iframe.src = `http://${window.location.hostname}:1984/stream.html?src=cam${slot}`;
+    // First check if camera is reachable via snapshot before showing iframe
+    dot.classList.remove('active');
+    label.textContent = 'CONNECTING...';
+    overlay.style.display = 'flex';
+    document.getElementById('camOverlayMsg').innerHTML = '';
+    const existingIframe = focus.querySelector('iframe');
+    if (existingIframe) existingIframe.remove();
+
+    const host = window.location.hostname;
+    const snapUrl = `http://${host}:1984/api/frame.jpeg?src=cam${slot}&t=${Date.now()}`;
+    fetch(snapUrl).then(r => {
+      if (!r.ok) throw new Error('offline');
+      overlay.style.display = 'none';
+      dot.classList.add('active');
+      label.textContent = 'LIVE';
+      let iframe = focus.querySelector('iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;inset:0;';
+        focus.appendChild(iframe);
+      }
+      iframe.src = `http://${host}:1984/stream.html?src=cam${slot}`;
+    }).catch(() => {
+      // Camera offline — show clean overlay instead of go2rtc error
+      dot.classList.remove('active');
+      label.textContent = 'OFFLINE';
+      overlay.style.display = 'flex';
+      document.getElementById('camOverlayMsg').innerHTML = `
+        <span style="font-size:32px;opacity:.2">📡</span><br>
+        CAMERA OFFLINE<br>
+        <span style="font-size:8px;opacity:.5;margin-top:4px;display:block">${cam.name} · ${cam.rtsp.replace(/:[^@]*@/, ':***@')}</span><br>
+        <a onclick="selectCam(${slot})" style="color:var(--accent);font-size:9px">↺ RETRY</a>`;
+      const iframe = focus.querySelector('iframe');
+      if (iframe) iframe.remove();
+    });
   } else {
     overlay.style.display = 'flex';
     dot.classList.remove('active');
