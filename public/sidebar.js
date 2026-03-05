@@ -48,6 +48,8 @@
     .sidebar.collapsed .sidebar-toggle { justify-content: center; }
     .sidebar-toggle:hover { background: var(--surface2); color: var(--text); }
     .layout { transition: grid-template-columns 0.25s ease; }
+    .main { transition: opacity 0.18s ease; }
+    .main.fading { opacity: 0; }
   `;
   document.head.appendChild(style);
 })();
@@ -55,17 +57,17 @@
 // ── HTML ──────────────────────────────────────────────────────────────────────
 
 const SIDEBAR_HTML = `
-  <div class="brand" onclick="window.location.href='/idle.html'">
+  <div class="brand" onclick="navigate('/idle.html')">
     <div class="brand-name">HOMEPI</div>
     <div class="brand-sub" id="sidebarSub">&nbsp;</div>
   </div>
-  <div class="nav" data-page="dashboard" onclick="window.location.href='/index.html'"><span class="nav-icon">⚡</span><span class="nav-label">DASHBOARD</span></div>
-  <div class="nav" data-page="lighting"  onclick="window.location.href='/lighting.html'"><span class="nav-icon">💡</span><span class="nav-label">LIGHTING</span></div>
+  <div class="nav" data-page="dashboard" onclick="navigate('/index.html')"><span class="nav-icon">⚡</span><span class="nav-label">DASHBOARD</span></div>
+  <div class="nav" data-page="lighting"  onclick="navigate('/lighting.html')"><span class="nav-icon">💡</span><span class="nav-label">LIGHTING</span></div>
   <div class="nav" data-page="climate"><span class="nav-icon">🌡</span><span class="nav-label">CLIMATE</span></div>
   <div class="nav" data-page="security"><span class="nav-icon">🔒</span><span class="nav-label">SECURITY</span></div>
   <div class="nav" data-page="media"><span class="nav-icon">🎵</span><span class="nav-label">MEDIA</span></div>
-  <div class="nav" data-page="devices"  onclick="window.location.href='/devices.html'"><span class="nav-icon">📡</span><span class="nav-label">DEVICES</span></div>
-  <div class="nav" data-page="cameras"  onclick="window.location.href='/camera.html'"><span class="nav-icon">📷</span><span class="nav-label">CAMERAS</span></div>
+  <div class="nav" data-page="devices"  onclick="navigate('/devices.html')"><span class="nav-icon">📡</span><span class="nav-label">DEVICES</span></div>
+  <div class="nav" data-page="cameras"  onclick="navigate('/camera.html')"><span class="nav-icon">📷</span><span class="nav-label">CAMERAS</span></div>
   <div class="sidebar-spacer"></div>
   <div class="nav" onclick="openSettings()"><span class="nav-icon">⚙</span><span class="nav-label">SETTINGS</span></div>
   <div class="sidebar-toggle" onclick="toggleSidebar()"><span id="sidebarToggleIcon">◀</span></div>
@@ -142,6 +144,8 @@ function setSidebarSub(text) {
   const el = document.getElementById('sidebarSub');
   if (el) el.textContent = text;
 }
+
+
 
 // ── Collapse toggle ───────────────────────────────────────────────────────────
 
@@ -260,7 +264,7 @@ function _startIdleTimer() {
   clearTimeout(_idleTimer);
   const enabled = localStorage.getItem('homepi_idle_auto') === 'true';
   if (!enabled) return;
-  if (window.location.pathname === '/idle.html') return;
+  if (window.location.pathname === '/idle.html' || window.location.pathname === '/idle') return;
   const mins = parseInt(localStorage.getItem('homepi_idle_mins')) || 5;
   _idleTimer = setTimeout(() => {
     window.location.href = '/idle.html';

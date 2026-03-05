@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>HomePi</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600&family=Fira+Code:wght@300;400&display=swap" rel="stylesheet">
+<style>
+/* ── Reset + vars ────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c26; --surface3:#242432;
+  --border:rgba(255,255,255,0.06); --border2:rgba(255,255,255,0.1);
+  --text:#f0f0f8; --muted:#55556a; --accent:#e8c547;
+  --green:#4ade80; --red:#f87171; --blue:#60a5fa; --orange:#fb923c;
+}
+body { background:var(--bg); width:100vw; height:100vh; overflow:hidden;
+  font-family:'Unbounded',sans-serif; color:var(--text); }
+
+/* ── App shell ───────────────────────────────────────────────────────── */
+.app { width:100vw; height:100vh; display:grid; grid-template-rows:40px 1fr; overflow:hidden; }
+.statusbar { display:flex; justify-content:space-between; align-items:center;
+  padding:0 22px; background:var(--bg); border-bottom:1px solid var(--border);
+  font-size:10px; color:var(--muted); font-family:'Fira Code',monospace; letter-spacing:.05em; }
+.statusbar .time { color:var(--text); font-size:11px; }
+.dot { width:6px; height:6px; border-radius:50%; background:var(--muted); transition:all .4s; }
+.dot.live { background:var(--green); box-shadow:0 0 8px var(--green); }
+.layout { display:grid; grid-template-columns:var(--sidebar-width,160px) 1fr; overflow:hidden; height:100%; }
+.main { overflow:hidden; background:var(--bg); transition:opacity .18s ease; }
+.main.fading { opacity:0; }
+.main::-webkit-scrollbar { width:3px; }
+.main::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:3px; }
+
+/* ── Pages: only active shown ────────────────────────────────────────── */
+.page { display:none; width:100%; height:100%; flex-direction:column; overflow-y:auto; padding:clamp(12px,2vh,24px) clamp(12px,2vw,28px); gap:clamp(8px,1.5vh,16px); }
+.page.active { display:flex; }
+.page::-webkit-scrollbar { width:3px; }
+.page::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:3px; }
+
+/* ── Dashboard styles ────────────────────────────────────────────────── */
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; animation:fadeUp .3s ease both; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:clamp(10px,1.5vw,18px); }
+.stat-label { font-family:'Fira Code',monospace; font-size:clamp(7px,.8vw,10px); color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px; }
+.stat-value { font-size:clamp(18px,2.5vw,36px); font-weight:600; line-height:1; margin-bottom:4px; }
+.stat-sub { font-family:'Fira Code',monospace; font-size:clamp(7px,.8vw,10px); color:var(--muted); }
+.stat-accent{color:var(--accent);} .stat-green{color:var(--green);} .stat-blue{color:var(--blue);} .stat-orange{color:var(--orange);}
+.mid-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; animation:fadeUp .3s .05s ease both; }
+.bot-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; animation:fadeUp .3s .1s ease both; }
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:clamp(10px,1.5vw,18px); }
+.panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.panel-title { font-size:clamp(8px,.9vw,12px); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.panel-link { font-family:'Fira Code',monospace; font-size:8px; color:var(--accent); cursor:pointer; opacity:.7; transition:opacity .15s; }
+.panel-link:hover { opacity:1; }
+.light-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); transition:all .2s; }
+.light-row:last-child { border-bottom:none; padding-bottom:0; }
+.light-row:first-child { padding-top:0; }
+.light-row-icon { width:30px; height:30px; border-radius:8px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; transition:all .3s; }
+.light-row.on .light-row-icon { background:rgba(232,197,71,.12); }
+.light-row-name { flex:1; font-size:clamp(9px,1vw,13px); font-weight:400; }
+.light-row-state { font-family:'Fira Code',monospace; font-size:8px; padding:2px 8px; border-radius:4px; }
+.light-row.on .light-row-state { background:rgba(232,197,71,.1); color:var(--accent); }
+.light-row.off .light-row-state { background:rgba(85,85,106,.15); color:var(--muted); }
+.toggle-sm { width:30px; height:17px; border-radius:9px; background:var(--surface3); position:relative; cursor:pointer; border:1px solid var(--border2); flex-shrink:0; transition:background .2s; }
+.toggle-sm.on { background:rgba(232,197,71,.25); border-color:rgba(232,197,71,.4); }
+.toggle-sm-knob { width:11px; height:11px; border-radius:50%; background:var(--muted); position:absolute; top:2px; left:2px; transition:all .2s; }
+.toggle-sm.on .toggle-sm-knob { left:15px; background:var(--accent); }
+.climate-row { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:clamp(9px,1vw,13px); }
+.climate-row:last-child { border-bottom:none; }
+.climate-row:first-child { padding-top:0; }
+.climate-val { font-family:'Fira Code',monospace; font-size:11px; }
+.climate-val.live { color:var(--blue); } .climate-val.mock { color:var(--muted); }
+.activity-item { display:flex; align-items:flex-start; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); }
+.activity-item:last-child { border-bottom:none; }
+.activity-item:first-child { padding-top:0; }
+.activity-dot { width:6px; height:6px; border-radius:50%; background:var(--muted); flex-shrink:0; margin-top:3px; }
+.activity-dot.recent { background:var(--green); }
+.activity-text { font-family:'Fira Code',monospace; font-size:8px; color:var(--muted); line-height:1.5; }
+.activity-text strong { color:var(--text); font-weight:400; }
+.cam-thumb { width:100%; aspect-ratio:16/9; background:#000; border-radius:8px; overflow:hidden; position:relative; cursor:pointer; border:1px solid var(--border2); transition:border-color .2s; }
+.cam-thumb:hover { border-color:rgba(232,197,71,.3); }
+.cam-thumb-inner { width:100%; height:100%; position:relative; display:flex; align-items:center; justify-content:center; }
+.cam-no-signal { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.cam-icon { font-size:22px; opacity:.25; }
+.cam-label { font-family:'Fira Code',monospace; font-size:7px; color:var(--muted); letter-spacing:.1em; opacity:.5; }
+.cam-badge { position:absolute; top:6px; right:6px; font-family:'Fira Code',monospace; font-size:7px; padding:2px 6px; border-radius:3px; background:rgba(248,113,113,.15); color:var(--red); letter-spacing:.08em; }
+
+/* ── Lighting page styles ─────────────────────────────────────────────── */
+.page-header { display:flex; align-items:center; justify-content:space-between; animation:fadeUp .3s ease both; flex-shrink:0; }
+.page-title { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.all-toggle { display:flex; align-items:center; gap:8px; font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); cursor:pointer; }
+.all-toggle-btn { width:36px; height:20px; border-radius:10px; background:var(--surface3); position:relative; transition:background .2s; border:1px solid var(--border2); }
+.all-toggle-btn.on { background:rgba(232,197,71,.3); border-color:rgba(232,197,71,.4); }
+.all-toggle-knob { width:14px; height:14px; border-radius:50%; background:var(--muted); position:absolute; top:2px; left:2px; transition:all .2s; }
+.all-toggle-btn.on .all-toggle-knob { left:18px; background:var(--accent); }
+.lights-grid { display:flex; flex-direction:column; gap:10px; animation:fadeUp .3s .05s ease both; }
+.light-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; transition:border-color .3s; }
+.light-card.on { border-color:rgba(232,197,71,.2); }
+.card-top { display:grid; grid-template-columns:44px 1fr auto; align-items:center; gap:14px; margin-bottom:14px; }
+.bulb-icon { width:44px; height:44px; border-radius:12px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:20px; transition:all .3s; flex-shrink:0; }
+.light-card.on .bulb-icon { background:rgba(232,197,71,.12); box-shadow:0 0 16px rgba(232,197,71,.15); }
+.card-name { font-size:12px; font-weight:600; letter-spacing:.03em; margin-bottom:4px; }
+.card-state { font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); display:flex; align-items:center; gap:8px; }
+.state-dot { width:6px; height:6px; border-radius:50%; background:var(--muted); transition:all .3s; }
+.light-card.on .state-dot { background:var(--accent); box-shadow:0 0 6px var(--accent); }
+.power-btn { width:36px; height:36px; border-radius:10px; background:var(--surface2); border:1px solid var(--border2); display:flex; align-items:center; justify-content:center; font-size:15px; cursor:pointer; transition:all .2s; color:var(--muted); flex-shrink:0; }
+.light-card.on .power-btn { background:rgba(232,197,71,.12); border-color:rgba(232,197,71,.3); color:var(--accent); }
+.slider-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.slider-label { font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); width:28px; text-align:right; flex-shrink:0; }
+.brightness-slider { -webkit-appearance:none; appearance:none; flex:1; height:4px; border-radius:2px; background:var(--surface3); outline:none; cursor:pointer; transition:opacity .2s; }
+.brightness-slider:disabled { opacity:.3; cursor:default; }
+.brightness-slider::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 0 8px rgba(232,197,71,.5); }
+.brightness-slider:disabled::-webkit-slider-thumb { background:var(--muted); box-shadow:none; }
+.colour-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.swatch { width:24px; height:24px; border-radius:7px; cursor:pointer; border:2px solid transparent; transition:all .15s; flex-shrink:0; }
+.swatch:hover { transform:scale(1.15); }
+.swatch.active { border-color:white; transform:scale(1.1); }
+.colour-picker-wrap { position:relative; width:24px; height:24px; flex-shrink:0; }
+.colour-picker-btn { width:24px; height:24px; border-radius:7px; background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red); cursor:pointer; border:2px solid transparent; transition:all .15s; }
+.colour-picker-btn:hover { transform:scale(1.15); }
+.colour-picker-input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.sensor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; animation:fadeUp .3s .1s ease both; }
+.sensor-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; display:flex; align-items:center; gap:14px; }
+.sensor-icon { width:44px; height:44px; border-radius:12px; background:rgba(96,165,250,.08); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.sensor-value { font-size:20px; font-weight:600; color:var(--blue); line-height:1; margin-bottom:4px; }
+.sensor-label { font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); }
+.empty { text-align:center; padding:50px 20px; color:var(--muted); font-size:11px; line-height:1.8; font-family:'Fira Code',monospace; }
+.section-label { font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+
+/* ── Devices page styles ─────────────────────────────────────────────── */
+.add-btn { display:flex; align-items:center; gap:8px; background:rgba(232,197,71,.12); border:1px solid rgba(232,197,71,.3); border-radius:10px; padding:8px 16px; font-family:'Unbounded',sans-serif; font-size:10px; letter-spacing:.08em; color:var(--accent); cursor:pointer; transition:all .2s; }
+.add-btn:hover { background:rgba(232,197,71,.2); }
+.add-btn.scanning { background:rgba(74,222,128,.1); border-color:rgba(74,222,128,.3); color:var(--green); }
+.scan-banner { background:rgba(74,222,128,.06); border:1px solid rgba(74,222,128,.2); border-radius:12px; padding:14px 18px; display:flex; align-items:center; gap:14px; animation:fadeUp .3s ease both; }
+.scan-banner.hidden { display:none; }
+.scan-pulse { width:32px; height:32px; border-radius:50%; border:2px solid var(--green); flex-shrink:0; position:relative; animation:scanPulse 1.5s ease-in-out infinite; }
+.scan-pulse::after { content:''; position:absolute; inset:3px; border-radius:50%; background:var(--green); opacity:.3; }
+@keyframes scanPulse { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.15);opacity:.7;} }
+.scan-text { flex:1; }
+.scan-title { font-size:11px; color:var(--green); margin-bottom:3px; }
+.scan-sub { font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); }
+.scan-timer { font-family:'Fira Code',monospace; font-size:18px; color:var(--green); min-width:40px; text-align:right; }
+.stop-btn { padding:6px 12px; background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.2); border-radius:8px; font-family:'Unbounded',sans-serif; font-size:9px; letter-spacing:.06em; color:var(--red); cursor:pointer; transition:all .15s; }
+.stop-btn:hover { background:rgba(248,113,113,.2); }
+.device-grid { display:flex; flex-direction:column; gap:8px; animation:fadeUp .35s .05s ease both; }
+.room-header { display:flex; align-items:center; justify-content:space-between; padding:14px 2px 8px; margin-top:10px; border-bottom:1px solid var(--border); }
+.room-header:first-child { margin-top:0; }
+.room-header-left { display:flex; align-items:center; gap:8px; }
+.room-icon { font-size:14px; }
+.room-name { font-size:11px; font-weight:600; color:var(--text); }
+.room-count { font-family:'Fira Code',monospace; font-size:8px; color:var(--muted); }
+.room-all-toggle { width:32px; height:18px; background:var(--surface3); border-radius:10px; position:relative; cursor:pointer; transition:background .2s; flex-shrink:0; border:1px solid var(--border2); }
+.room-all-toggle.on { background:rgba(232,197,71,.25); border-color:rgba(232,197,71,.4); }
+.room-all-knob { width:12px; height:12px; border-radius:50%; background:var(--muted); position:absolute; top:2px; left:2px; transition:transform .2s, background .2s; }
+.room-all-toggle.on .room-all-knob { transform:translateX(14px); background:var(--accent); }
+.dash-room-group { margin-bottom:6px; }
+.dash-room-label { font-family:'Fira Code',monospace; font-size:8px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; padding:6px 0 4px; display:flex; align-items:center; gap:6px; }
+.dash-room-count { color:var(--surface3); font-size:7px; }
+.room-header { display:flex; align-items:center; justify-content:space-between; padding:14px 2px 8px; margin-top:10px; border-bottom:1px solid var(--border); }
+.room-header:first-child { margin-top:0; }
+.room-header-left { display:flex; align-items:center; gap:8px; }
+.room-icon { font-size:14px; }
+.room-name { font-size:11px; font-weight:600; color:var(--text); }
+.room-count { font-family:'Fira Code',monospace; font-size:8px; color:var(--muted); }
+.room-all-toggle { width:32px; height:18px; background:var(--surface3); border-radius:10px; position:relative; cursor:pointer; transition:background .2s; flex-shrink:0; border:1px solid var(--border2); }
+.room-all-toggle.on { background:rgba(232,197,71,.25); border-color:rgba(232,197,71,.4); }
+.room-all-knob { width:12px; height:12px; border-radius:50%; background:var(--muted); position:absolute; top:2px; left:2px; transition:transform .2s, background .2s; }
+.room-all-toggle.on .room-all-knob { transform:translateX(14px); background:var(--accent); }
+.dash-room-group { margin-bottom:6px; }
+.dash-room-label { font-family:'Fira Code',monospace; font-size:8px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; padding:6px 0 4px; display:flex; align-items:center; gap:6px; }
+.dash-room-count { color:var(--surface3); font-size:7px; }
+.device-group { display:flex; justify-content:space-between; align-items:center; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:12px 4px 6px; border-bottom:1px solid var(--border); margin-top:4px; }
+.device-group:first-child { margin-top:0; padding-top:4px; }
+.device-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; display:grid; grid-template-columns:44px 1fr auto; align-items:center; gap:14px; transition:all .2s; }
+.device-card.new-device { border-color:rgba(74,222,128,.3); background:rgba(74,222,128,.04); animation:newDevice .5s ease both; }
+@keyframes newDevice { from{opacity:0;transform:translateX(-10px);border-color:rgba(74,222,128,.6);} to{opacity:1;transform:translateX(0);} }
+.device-icon { width:44px; height:44px; border-radius:12px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.device-info { min-width:0; }
+.device-name-wrap { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.device-name { font-size:12px; font-weight:600; letter-spacing:.03em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.edit-btn { width:22px; height:22px; border-radius:6px; background:var(--surface2); border:1px solid var(--border2); display:flex; align-items:center; justify-content:center; font-size:10px; cursor:pointer; flex-shrink:0; opacity:0; transition:all .15s; color:var(--muted); }
+.device-card:hover .edit-btn { opacity:1; }
+.name-input { background:var(--surface2); border:1px solid rgba(232,197,71,.4); border-radius:6px; padding:3px 8px; font-family:'Unbounded',sans-serif; font-size:11px; color:var(--text); outline:none; width:180px; }
+.name-save { padding:3px 10px; background:rgba(232,197,71,.15); border:1px solid rgba(232,197,71,.3); border-radius:6px; font-family:'Unbounded',sans-serif; font-size:9px; color:var(--accent); cursor:pointer; }
+.device-meta { font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); display:flex; gap:10px; align-items:center; }
+.type-badge { font-family:'Fira Code',monospace; font-size:8px; padding:2px 7px; border-radius:4px; letter-spacing:.04em; text-transform:uppercase; }
+.type-light{background:rgba(232,197,71,.1);color:var(--accent);} .type-sensor{background:rgba(96,165,250,.1);color:var(--blue);} .type-switch{background:rgba(74,222,128,.1);color:var(--green);} .type-unknown{background:rgba(85,85,106,.15);color:var(--muted);}
+.signal { display:flex; align-items:flex-end; gap:2px; height:12px; }
+.signal-bar { width:3px; border-radius:1px; background:var(--surface3); transition:background .3s; }
+.signal-bar.active { background:var(--green); }
+.signal-bar:nth-child(1){height:4px;} .signal-bar:nth-child(2){height:7px;} .signal-bar:nth-child(3){height:10px;} .signal-bar:nth-child(4){height:12px;}
+.device-actions { display:flex; gap:8px; align-items:center; }
+.state-indicator { font-family:'Fira Code',monospace; font-size:9px; padding:3px 9px; border-radius:6px; letter-spacing:.04em; }
+.state-on{background:rgba(74,222,128,.1);color:var(--green);} .state-off{background:rgba(85,85,106,.15);color:var(--muted);}
+.remove-btn { width:32px; height:32px; border-radius:8px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer; color:var(--muted); transition:all .2s; opacity:0; }
+.device-card:hover .remove-btn { opacity:1; }
+.remove-btn:hover { background:rgba(248,113,113,.1); border-color:rgba(248,113,113,.3); color:var(--red); }
+.confirm-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; z-index:100; backdrop-filter:blur(4px); animation:fadeIn .2s ease; }
+.confirm-overlay.hidden { display:none; }
+.confirm-box { background:var(--surface); border:1px solid var(--border2); border-radius:18px; padding:28px 32px; max-width:360px; width:90%; text-align:center; }
+.confirm-icon { font-size:36px; margin-bottom:14px; }
+.confirm-title { font-size:14px; font-weight:600; margin-bottom:8px; }
+.confirm-sub { font-family:'Fira Code',monospace; font-size:10px; color:var(--muted); margin-bottom:24px; line-height:1.6; }
+.confirm-btns { display:flex; gap:10px; justify-content:center; }
+.confirm-cancel { padding:10px 24px; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; font-family:'Unbounded',sans-serif; font-size:10px; color:var(--muted); cursor:pointer; transition:all .15s; }
+.confirm-cancel:hover { color:var(--text); }
+.confirm-remove { padding:10px 24px; background:rgba(248,113,113,.15); border:1px solid rgba(248,113,113,.3); border-radius:10px; font-family:'Unbounded',sans-serif; font-size:10px; color:var(--red); cursor:pointer; transition:all .15s; }
+.confirm-remove:hover { background:rgba(248,113,113,.25); }
+
+/* ── Camera page styles ──────────────────────────────────────────────── */
+#page-cameras { padding:0; overflow:hidden; display:none; }
+#page-cameras.active { display:flex; flex-direction:row; }
+.cam-area { flex:1; min-width:0; }
+.cam-area { display:flex; flex-direction:column; overflow:hidden; border-right:1px solid var(--border); }
+.cam-focus { flex:1; background:#000; position:relative; overflow:hidden; }
+.cam-focus video,.cam-focus iframe { width:100%; height:100%; object-fit:cover; display:block; }
+
+/* Camera controls overlay */
+.cam-controls { position:absolute; inset:0; pointer-events:none; z-index:10; }
+.cam-controls.active { pointer-events:all; }
+
+/* Toolbar */
+.cam-toolbar {
+  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+  display:flex; gap:8px; align-items:center;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.08); border-radius:30px;
+  padding:6px 12px;
+  pointer-events:all;
+  opacity:0; transition:opacity .2s;
+}
+.cam-focus:hover .cam-toolbar { opacity:1; }
+.cam-tool-btn {
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:6px 10px; border-radius:8px; cursor:pointer;
+  transition:background .15s; color:rgba(255,255,255,.5);
+  font-family:'Fira Code',monospace; font-size:7px; letter-spacing:.06em;
+}
+.cam-tool-btn:hover { background:rgba(255,255,255,.08); color:var(--text); }
+.cam-tool-btn.active { color:var(--accent); }
+.cam-tool-btn.active .cam-tool-icon { color:var(--accent); }
+.cam-tool-icon { font-size:14px; line-height:1; }
+.cam-tool-sep { width:1px; height:24px; background:rgba(255,255,255,.1); }
+.room-select { background:var(--surface2); border:1px solid var(--border2); color:var(--muted); font-family:'Fira Code',monospace; font-size:8px; border-radius:4px; padding:2px 4px; cursor:pointer; margin-top:4px; max-width:140px; }
+.room-select:focus { outline:none; border-color:rgba(232,197,71,.3); }
+
+/* Joystick */
+.cam-joystick-wrap {
+  position:absolute; bottom:16px; right:16px;
+  width:80px; height:80px;
+  pointer-events:all;
+  opacity:0; transition:opacity .2s;
+}
+.cam-focus:hover .cam-joystick-wrap { opacity:1; }
+.cam-joystick-base {
+  width:80px; height:80px; border-radius:50%;
+  background:rgba(0,0,0,.45); backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.1);
+  position:relative; cursor:grab;
+}
+.cam-joystick-base:active { cursor:grabbing; }
+.cam-joystick-knob {
+  width:32px; height:32px; border-radius:50%;
+  background:rgba(255,255,255,.15);
+  border:1.5px solid rgba(255,255,255,.3);
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  transition:transform .1s ease, background .15s;
+  pointer-events:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+.cam-joystick-base:active .cam-joystick-knob { background:rgba(232,197,71,.25); border-color:rgba(232,197,71,.5); }
+/* Cross hair marks */
+.cam-joystick-base::before, .cam-joystick-base::after {
+  content:''; position:absolute;
+  background:rgba(255,255,255,.06); border-radius:1px;
+}
+.cam-joystick-base::before { width:1px; height:60%; top:20%; left:50%; transform:translateX(-50%); }
+.cam-joystick-base::after  { height:1px; width:60%; left:20%; top:50%; transform:translateY(-50%); }
+.cam-mock-label {
+  position:absolute; top:-18px; left:50%; transform:translateX(-50%);
+  font-family:'Fira Code',monospace; font-size:6px; color:rgba(255,255,255,.2);
+  letter-spacing:.08em; white-space:nowrap;
+}
+.cam-focus-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:#000; }
+.cam-focus-icon { font-size:36px; opacity:.15; }
+.cam-focus-msg { font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); letter-spacing:.1em; text-align:center; line-height:1.8; opacity:.6; }
+.cam-focus-msg a { color:var(--accent); text-decoration:none; opacity:.8; cursor:pointer; }
+.cam-focus-msg a:hover { opacity:1; }
+.cam-infobar { display:flex; align-items:center; justify-content:space-between; padding:6px 12px; background:var(--surface); border-top:1px solid var(--border); font-family:'Fira Code',monospace; font-size:8px; color:var(--muted); flex-shrink:0; }
+.cam-status-dot { width:5px; height:5px; border-radius:50%; background:var(--red); display:inline-block; margin-right:5px; }
+.cam-status-dot.active { background:var(--green); box-shadow:0 0 5px var(--green); animation:blink 2s ease-in-out infinite; }
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+.cam-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:8px 10px; background:var(--surface); border-top:1px solid var(--border); flex-shrink:0; }
+.cam-slot { aspect-ratio:16/9; background:#000; border-radius:6px; overflow:hidden; position:relative; cursor:pointer; border:1px solid var(--border); transition:all .15s; display:flex; align-items:center; justify-content:center; }
+.cam-slot:hover { border-color:var(--border2); }
+.cam-slot.selected { border-color:var(--accent); }
+.cam-slot-label { position:absolute; bottom:3px; left:4px; font-family:'Fira Code',monospace; font-size:6px; color:rgba(255,255,255,.4); letter-spacing:.05em; }
+.cam-slot-dot { position:absolute; top:4px; right:4px; width:4px; height:4px; border-radius:50%; background:var(--muted); }
+.cam-slot.active .cam-slot-dot { background:var(--green); box-shadow:0 0 4px var(--green); }
+.cam-slot-empty { font-size:10px; opacity:.1; }
+.cam-slot-add { display:flex; align-items:center; justify-content:center; font-size:14px; opacity:.2; transition:opacity .15s; }
+.cam-slot-add:hover { opacity:.5; }
+.alerts-panel { display:flex; flex-direction:column; overflow:hidden; width:0; transition:width .2s ease; flex-shrink:0; }
+.alerts-panel.open { width:220px; }
+.alerts-resize { width:4px; background:var(--border); cursor:col-resize; flex-shrink:0; transition:background .15s; position:relative; }
+.alerts-resize:hover { background:rgba(232,197,71,.3); }
+.alerts-toggle { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:20px; height:40px; display:flex; align-items:center; justify-content:center; background:var(--surface2); border:1px solid var(--border2); border-radius:4px; font-size:8px; color:var(--muted); cursor:pointer; }
+.alerts-header { padding:14px 14px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.alerts-title { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.alerts-filter { display:flex; gap:4px; }
+.filter-btn { font-family:'Fira Code',monospace; font-size:7px; padding:2px 7px; border-radius:4px; background:var(--surface2); color:var(--muted); cursor:pointer; border:1px solid transparent; transition:all .15s; letter-spacing:.05em; }
+.filter-btn.active { background:rgba(232,197,71,.1); color:var(--accent); border-color:rgba(232,197,71,.2); }
+.alerts-list { flex:1; overflow-y:auto; padding:8px 0; }
+.alerts-list::-webkit-scrollbar { width:2px; }
+.alerts-list::-webkit-scrollbar-thumb { background:var(--surface3); }
+.alert-item { padding:8px 14px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; animation:fadeUp .3s ease both; }
+.alert-item:hover { background:var(--surface); }
+.alert-item:last-child { border-bottom:none; }
+.alert-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+.alert-type { font-size:8px; font-weight:600; letter-spacing:.06em; display:flex; align-items:center; gap:5px; }
+.alert-type.motion{color:var(--orange);} .alert-type.person{color:var(--red);} .alert-type.system{color:var(--blue);}
+.alert-time { font-family:'Fira Code',monospace; font-size:7px; color:var(--muted); }
+.alert-cam { font-family:'Fira Code',monospace; font-size:7px; color:var(--muted); }
+.no-alerts { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; font-family:'Fira Code',monospace; font-size:9px; color:var(--muted); opacity:.5; text-align:center; line-height:1.8; }
+.setup-banner { margin:10px 14px 0; background:rgba(232,197,71,.06); border:1px solid rgba(232,197,71,.15); border-radius:8px; padding:8px 10px; font-family:'Fira Code',monospace; font-size:7px; color:var(--muted); line-height:1.8; letter-spacing:.03em; flex-shrink:0; }
+.setup-banner strong { color:var(--accent); font-weight:400; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="statusbar">
+    <span class="time" id="clock">00:00</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="dateLabel" style="color:var(--muted)"></span>
+      <div class="dot" id="connDot"></div>
+      <span id="connLabel">connecting</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div id="sidebar" class="sidebar"></div>
+
+    <div class="main" id="mainArea">
+
+      <!-- ══════════════════ DASHBOARD ══════════════════ -->
+      <div class="page active" id="page-dashboard">
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">Lights On</div>
+            <div class="stat-value stat-accent" id="statLightsOn">0</div>
+            <div class="stat-sub" id="statLightsSub">of 0 total</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Temperature</div>
+            <div class="stat-value stat-blue" id="statTemp">—</div>
+            <div class="stat-sub" id="statTempSub">no sensor</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Security</div>
+            <div class="stat-value stat-green">●</div>
+            <div class="stat-sub">all clear</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Devices</div>
+            <div class="stat-value stat-orange" id="statDevices">0</div>
+            <div class="stat-sub">online</div>
+          </div>
+        </div>
+
+        <div class="mid-row">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Lighting</div>
+              <div class="panel-link" onclick="navigate('lighting')">MANAGE →</div>
+            </div>
+            <div id="dashLightsPanel">
+              <div style="font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);padding:8px 0">No lights paired</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Security</div>
+              <div class="panel-link" onclick="navigate('cameras')">CAMERAS →</div>
+            </div>
+            <div class="cam-thumb" id="dashCamThumb" onclick="navigate('cameras')">
+              <div class="cam-thumb-inner" id="dashCamInner">
+                <div class="cam-no-signal" id="dashCamNoSignal">
+                  <span class="cam-icon">📷</span>
+                  <span class="cam-label" id="dashCamLabel">NO CAMERA</span>
+                </div>
+                <div class="cam-badge" id="dashCamBadge">OFFLINE</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bot-row">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Climate</div>
+              <div class="panel-link">VIEW →</div>
+            </div>
+            <div class="climate-row"><span>Temperature</span><span class="climate-val live" id="climateTemp">—</span></div>
+            <div class="climate-row"><span>Humidity</span><span class="climate-val live" id="climateHumidity">—</span></div>
+            <div class="climate-row"><span>Outside</span><span class="climate-val mock" id="weatherTemp">—</span></div>
+            <div class="climate-row"><span>Conditions</span><span class="climate-val mock" id="weatherCond">—</span></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Recent Activity</div>
+            </div>
+            <div id="activityFeed">
+              <div class="activity-item"><div class="activity-dot"></div><div class="activity-text"><strong>System started</strong><br>HomePi online</div></div>
+              <div class="activity-item"><div class="activity-dot"></div><div class="activity-text">Waiting for<br>device events...</div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════════════════ LIGHTING ══════════════════ -->
+      <div class="page" id="page-lighting">
+        <div class="page-header">
+          <div class="page-title">Lighting Control</div>
+          <div class="all-toggle" onclick="toggleAll()">
+            ALL
+            <div class="all-toggle-btn" id="allToggleBtn"><div class="all-toggle-knob"></div></div>
+          </div>
+        </div>
+        <div class="lights-grid" id="lightsGrid">
+          <div class="empty" id="emptyState">No lights found.<br>Pair a device from the Devices page.</div>
+        </div>
+        <div id="sensorSection" style="display:none">
+          <div class="section-label" style="margin-bottom:10px">Sensors</div>
+          <div class="sensor-grid" id="sensorGrid"></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ DEVICES ══════════════════ -->
+      <div class="page" id="page-devices">
+        <div class="page-header">
+          <div class="page-title">Manage Devices</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="add-btn" style="background:transparent;border-color:var(--border2);color:var(--muted)" onclick="openRoomsModal()">🏠 ROOMS</div>
+            <div class="add-btn" id="addBtn" onclick="startPairing()"><span>＋</span> ADD DEVICE</div>
+          </div>
+        </div>
+        <div class="scan-banner hidden" id="scanBanner">
+          <div class="scan-pulse"></div>
+          <div class="scan-text">
+            <div class="scan-title">SCANNING FOR DEVICES</div>
+            <div class="scan-sub">Power cycle your Zigbee device to pair it</div>
+          </div>
+          <div class="scan-timer" id="scanTimer">2:00</div>
+          <div class="stop-btn" onclick="stopPairing()">STOP</div>
+        </div>
+        <div class="device-grid" id="deviceGrid">
+          <div class="empty" id="devEmptyState">No devices found.<br>Tap ADD DEVICE to pair your first device.</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ CAMERAS ══════════════════ -->
+      <div class="page" id="page-cameras">
+        <div class="cam-area">
+          <div class="cam-focus" id="camFocus">
+            <div class="cam-focus-overlay" id="camOverlay">
+              <div class="cam-focus-icon">📷</div>
+              <div class="cam-focus-msg" id="camOverlayMsg">
+                NO CAMERA CONFIGURED<br><br>
+                <a onclick="openCamSetup(1)" style="color:var(--accent)">+ SET UP CAMERA →</a>
+              </div>
+            </div>
+
+            <!-- Camera controls (shown on hover) -->
+            <div class="cam-controls" id="camControls">
+              <!-- Toolbar -->
+              <div class="cam-toolbar">
+                <div class="cam-tool-btn" id="toolNight" onclick="camToolToggle('night',this)" title="Night vision">
+                  <span class="cam-tool-icon">🌙</span>NIGHT
+                </div>
+                <div class="cam-tool-sep"></div>
+                <div class="cam-tool-btn" id="toolPrivacy" onclick="camToolToggle('privacy',this)" title="Privacy mode">
+                  <span class="cam-tool-icon">🔒</span>PRIVACY
+                </div>
+                <div class="cam-tool-sep"></div>
+                <div class="cam-tool-btn" id="toolFlip" onclick="camToolToggle('flip',this)" title="Flip image">
+                  <span class="cam-tool-icon">↕</span>FLIP
+                </div>
+                <div class="cam-tool-sep"></div>
+                <div class="cam-tool-btn" onclick="camToolAction('reboot')" title="Reboot camera">
+                  <span class="cam-tool-icon">↺</span>REBOOT
+                </div>
+              </div>
+              <!-- Joystick -->
+              <div class="cam-joystick-wrap">
+                <div class="cam-mock-label">PTZ · COMING SOON</div>
+                <div class="cam-joystick-base" id="joystickBase">
+                  <div class="cam-joystick-knob" id="joystickKnob"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="cam-infobar">
+            <div><span class="cam-status-dot" id="camStatusDot"></span><span id="camStatusLabel">NO SIGNAL</span></div>
+            <span id="camName" style="color:var(--text)">CAM 1</span>
+            <span id="camTime">—</span>
+          </div>
+          <div class="cam-strip">
+            <div class="cam-slot selected" id="slot-1" onclick="selectCam(1)"><span class="cam-slot-empty">📷</span><div class="cam-slot-label">CAM 1</div><div class="cam-slot-dot"></div></div>
+            <div class="cam-slot" id="slot-2" onclick="selectCam(2)"><span class="cam-slot-empty">📷</span><div class="cam-slot-label">CAM 2</div><div class="cam-slot-dot"></div></div>
+            <div class="cam-slot" id="slot-3" onclick="selectCam(3)"><span class="cam-slot-empty">📷</span><div class="cam-slot-label">CAM 3</div><div class="cam-slot-dot"></div></div>
+            <div class="cam-slot cam-slot-add" onclick="openCamSetup(null)" title="Add camera">+</div>
+          </div>
+        </div>
+        <div class="alerts-resize" id="alertsResize" onclick="toggleAlerts()">
+          <div class="alerts-toggle" id="alertsToggleBtn">▶</div>
+        </div>
+        <div class="alerts-panel" id="alertsPanel">
+          <div class="alerts-header">
+            <div class="alerts-title">Motion Alerts</div>
+            <div class="alerts-filter">
+              <div class="filter-btn active" onclick="setFilter('all',this)">ALL</div>
+              <div class="filter-btn" onclick="setFilter('person',this)">PERSON</div>
+              <div class="filter-btn" onclick="setFilter('motion',this)">MOTION</div>
+            </div>
+          </div>
+          <div class="setup-banner" id="setupBanner"><strong>AWAITING CAMERA</strong><br>Add a camera to start receiving motion alerts.</div>
+          <div class="alerts-list" id="alertsList">
+            <div class="no-alerts" id="noAlerts"><span style="font-size:24px;opacity:.3">🔕</span>No alerts yet.<br>Alerts will appear<br>when motion is detected.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /mainArea -->
+  </div>
+</div>
+
+
+<!-- Camera setup modal -->
+<div class="confirm-overlay hidden" id="camSetupOverlay">
+  <div class="confirm-box" style="max-width:440px;text-align:left">
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:20px">Add Camera</div>
+
+    <!-- Step 1: Choose type -->
+    <div id="camStep1">
+      <div style="font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);margin-bottom:16px">What kind of camera are you adding?</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        <div onclick="camSelectType('tapo')" id="camTypeTapo" style="padding:14px 16px;border:1px solid var(--border2);border-radius:12px;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:600;margin-bottom:3px">📷 Tapo Camera</div>
+          <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted)">C210, C310, C320WS or any Tapo RTSP camera</div>
+        </div>
+        <div onclick="camSelectType('manual')" id="camTypeManual" style="padding:14px 16px;border:1px solid var(--border2);border-radius:12px;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:600;margin-bottom:3px">🔧 Other / Manual</div>
+          <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted)">Reolink, Hikvision, Dahua, or any RTSP stream</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <div class="confirm-cancel" onclick="closeCamSetup()">Cancel</div>
+        <div class="confirm-remove" style="background:rgba(232,197,71,.15);border-color:rgba(232,197,71,.3);color:var(--accent)" onclick="camTypeNext()">Continue →</div>
+      </div>
+    </div>
+
+    <!-- Step 2a: Tapo pre-instructions -->
+    <div id="camStep2a" style="display:none">
+      <div style="font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);line-height:2;margin-bottom:20px">
+        Before continuing, in the <strong style="color:var(--text)">Tapo app</strong>:<br>
+        1. Connect your camera to WiFi<br>
+        2. Go to <strong style="color:var(--text)">Settings → Advanced → Camera Account</strong><br>
+        3. Set a username &amp; password for RTSP<br>
+        4. Note the camera IP from <strong style="color:var(--text)">Device Info</strong>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <div class="confirm-cancel" onclick="showCamStep(1)">← Back</div>
+        <div class="confirm-remove" style="background:rgba(232,197,71,.15);border-color:rgba(232,197,71,.3);color:var(--accent)" onclick="showCamStep('2b')">Done, continue →</div>
+      </div>
+    </div>
+
+    <!-- Step 2b: Tapo details (IP + credentials) -->
+    <div id="camStep2b" style="display:none">
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+        <div>
+          <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em">CAMERA NAME</div>
+          <input id="camInputName" class="name-input" style="width:100%" placeholder="e.g. Entrance" maxlength="30">
+        </div>
+        <div>
+          <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em">CAMERA IP ADDRESS</div>
+          <input id="camInputIp" class="name-input" style="width:100%" placeholder="192.168.1.xxx">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em">RTSP USERNAME</div>
+            <input id="camInputUser" class="name-input" style="width:100%" placeholder="username">
+          </div>
+          <div>
+            <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em">RTSP PASSWORD</div>
+            <input id="camInputPass" class="name-input" style="width:100%" type="password" placeholder="password">
+          </div>
+        </div>
+        <div id="camSetupError" style="font-family:'Fira Code',monospace;font-size:9px;color:var(--red);display:none"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <div class="confirm-cancel" onclick="showCamStep('2a')">← Back</div>
+        <div class="confirm-remove" style="background:rgba(232,197,71,.15);border-color:rgba(232,197,71,.3);color:var(--accent)" onclick="saveCamSetup('tapo')">Save & Connect</div>
+      </div>
+    </div>
+
+    <!-- Step 2c: Manual RTSP URL -->
+    <div id="camStep2c" style="display:none">
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+        <div>
+          <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em">CAMERA NAME</div>
+          <input id="camInputNameManual" class="name-input" style="width:100%" placeholder="e.g. Front Door" maxlength="30">
+        </div>
+        <div>
+          <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em">RTSP URL</div>
+          <input id="camInputRtsp" class="name-input" style="width:100%;font-size:9px" placeholder="rtsp://user:pass@192.168.1.xxx/stream">
+        </div>
+        <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted);opacity:.6;line-height:1.8">
+          Check your camera's manual or settings page for the RTSP URL format.
+        </div>
+        <div id="camSetupErrorManual" style="font-family:'Fira Code',monospace;font-size:9px;color:var(--red);display:none"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <div class="confirm-cancel" onclick="showCamStep(1)">← Back</div>
+        <div class="confirm-remove" style="background:rgba(232,197,71,.15);border-color:rgba(232,197,71,.3);color:var(--accent)" onclick="saveCamSetup('manual')">Save & Connect</div>
+      </div>
+    </div>
+
+    <!-- Step 3: Connecting -->
+    <div id="camStep3" style="display:none;text-align:center;padding:10px 0">
+      <div style="font-size:28px;margin-bottom:12px">⏳</div>
+      <div style="font-family:'Fira Code',monospace;font-size:10px;color:var(--muted)">Connecting to camera...<br>This may take up to 30 seconds.</div>
+    </div>
+
+    <!-- Step 4: Success -->
+    <div id="camStep4" style="display:none;text-align:center;padding:10px 0">
+      <div style="font-size:28px;margin-bottom:12px">✅</div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px">Camera Connected!</div>
+      <div style="font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);margin-bottom:20px">Your camera is live and ready.</div>
+      <div class="confirm-remove" style="background:rgba(232,197,71,.15);border-color:rgba(232,197,71,.3);color:var(--accent)" onclick="closeCamSetup()">Done</div>
+    </div>
+  </div>
+</div>
+<!-- Rooms management modal -->
+<div class="confirm-overlay hidden" id="roomsModal">
+  <div class="confirm-box" style="max-width:420px;text-align:left;min-height:300px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Manage Rooms</div>
+      <div class="confirm-cancel" onclick="closeRoomsModal()">✕</div>
+    </div>
+
+    <!-- Room list -->
+    <div id="roomsList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:240px;overflow-y:auto"></div>
+
+    <!-- Add room form -->
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted);margin-bottom:8px;letter-spacing:.08em">ADD ROOM</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="roomIconInput" class="name-input" style="width:48px;text-align:center;font-size:16px" placeholder="🏠" maxlength="2">
+        <input id="roomNameInput" class="name-input" style="flex:1" placeholder="Room name" maxlength="30">
+        <div class="confirm-remove" style="background:rgba(232,197,71,.15);border-color:rgba(232,197,71,.3);color:var(--accent);white-space:nowrap" onclick="addRoom()">Add</div>
+      </div>
+      <div id="roomAddError" style="font-family:'Fira Code',monospace;font-size:8px;color:var(--red);display:none;margin-top:6px"></div>
+    </div>
+  </div>
+</div>
+<!-- Devices confirm overlay -->
+<div class="confirm-overlay hidden" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑</div>
+    <div class="confirm-title">Remove Device?</div>
+    <div class="confirm-sub" id="confirmText">This will remove the device from the Zigbee network.</div>
+    <div class="confirm-btns">
+      <div class="confirm-cancel" onclick="hideConfirm()">Cancel</div>
+      <div class="confirm-remove" id="confirmRemoveBtn">Remove</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════
+// SHARED INFRASTRUCTURE
+// ══════════════════════════════════════════════════════════════════════
+
+const API    = `http://${window.location.hostname}:3000`;
+const WS_URL = `ws://${window.location.hostname}:3001`;
+
+// Single shared device store — never re-created, only mutated
+let devices = {};
+
+// ── Clock ─────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const pad = n => n.toString().padStart(2,'0');
+  document.getElementById('clock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('dateLabel').textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+  const ct = document.getElementById('camTime');
+  if (ct) ct.textContent = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+function setStatus(ok) {
+  document.getElementById('connDot').className = 'dot' + (ok ? ' live' : '');
+  document.getElementById('connLabel').textContent = ok ? 'live' : 'offline';
+}
+
+// ── SPA Router ────────────────────────────────────────────────────────
+const PAGES = ['dashboard','lighting','devices','cameras'];
+let currentPage = 'dashboard';
+
+function navigate(key) {
+  // Resolve path-style calls to key
+  key = key.replace('/index.html','dashboard').replace('/lighting.html','lighting')
+           .replace('/devices.html','devices').replace('/camera.html','cameras')
+           .replace(/^\//,'').replace('.html','') || 'dashboard';
+
+  if (key === '/idle.html' || key === 'idle') { window.location.href = '/idle.html'; return; }
+  if (key === currentPage) return;
+
+  const mainArea = document.getElementById('mainArea');
+  mainArea.classList.add('fading');
+
+  setTimeout(() => {
+    PAGES.forEach(p => document.getElementById('page-'+p).classList.remove('active'));
+    document.getElementById('page-'+key).classList.add('active');
+    currentPage = key;
+
+    document.querySelectorAll('.nav[data-page]').forEach(el => {
+      el.classList.toggle('active', el.dataset.page === key);
+    });
+
+    setSidebarSub('');
+
+    renderCurrentPage(true); // full rebuild on navigate
+    mainArea.classList.remove('fading');
+  }, 180);
+}
+
+function renderCurrentPage(fullRebuild = false) {
+  if (currentPage === 'dashboard') renderDashboard();
+  if (currentPage === 'lighting')  renderLighting(fullRebuild);
+  if (currentPage === 'devices')   renderDevicesPage();
+}
+
+// ── Fetch + WebSocket ─────────────────────────────────────────────────
+async function fetchDevices() {
+  try {
+    if (rooms.length === 0) await loadRooms();
+    const res  = await fetch(`${API}/devices`);
+    const data = await res.json();
+    let structureChanged = false;
+    data.forEach(d => {
+      const existing = devices[d.id];
+      if (!existing) {
+        // New device — take everything including state
+        devices[d.id] = d;
+        structureChanged = true;
+      } else {
+        // Existing device — update metadata only, never overwrite state
+        // State is owned by WebSocket and local toggle actions
+        devices[d.id] = { ...d, state: existing.state };
+      }
+    });
+    // Remove devices that disappeared
+    Object.keys(devices).forEach(id => {
+      if (!data.find(d => d.id === id)) { delete devices[id]; structureChanged = true; }
+    });
+    if (structureChanged) renderCurrentPage(true);
+    setStatus(true);
+  } catch(e) { setStatus(false); }
+}
+
+let _ws = null;
+function connectWS() {
+  _ws = new WebSocket(WS_URL);
+  _ws.onmessage = (e) => {
+    try {
+      const { deviceId, state } = JSON.parse(e.data);
+      const prev = devices[deviceId];
+      devices[deviceId] = { ...prev, ...state, id: deviceId };
+      const d = devices[deviceId];
+      if (prev?.state !== state.state && state.state) {
+        // Only log if we didn't already log this locally (togglePower logs optimistically)
+        const recentKey = `${deviceId}-${state.state}`;
+        if (!recentActivityLog[recentKey] || Date.now() - recentActivityLog[recentKey] > 2000) {
+          addActivity(`${d.name || deviceId} → ${state.state}`, true);
+        }
+        delete recentActivityLog[recentKey];
+      }
+      // New device during pairing
+      if (!prev && currentPage === 'devices') {
+        renderDevicesPage();
+        const card = document.getElementById(`dev-${deviceId}`);
+        if (card) card.classList.add('new-device');
+      }
+      // Update UI directly without full re-render
+      if (currentPage === 'lighting') {
+        const card = document.getElementById(`lc-${deviceId}`);
+        if (card) {
+          updateLightCard(card, d);
+          updateRoomHeader(d.roomId || '__other__');
+          updateAllToggle();
+        }
+      } else if (currentPage === 'dashboard') {
+        renderDashboard();
+      }
+    } catch(e) {}
+  };
+  _ws.onclose = () => setTimeout(connectWS, 3000);
+  _ws.onerror = () => _ws.close();
+}
+
+// Load rooms first, then devices so groupByRoom has data on first render
+loadRooms().then(() => {
+  loadCamerasFromAPI();
+  fetchDevices();
+});
+connectWS();
+setInterval(fetchDevices, 15000);
+
+// ══════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════════
+const activity = [];
+
+function addActivity(text, recent=false) {
+  const now = new Date();
+  const t = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  activity.unshift({ text, time:t, recent });
+  if (activity.length > 5) activity.pop();
+  if (currentPage === 'dashboard') renderActivityFeed();
+}
+
+function renderActivityFeed() {
+  document.getElementById('activityFeed').innerHTML = activity.map((a,i) => `
+    <div class="activity-item">
+      <div class="activity-dot ${i===0&&a.recent?'recent':''}"></div>
+      <div class="activity-text"><strong>${a.text}</strong><br><span style="font-size:7px;color:var(--surface3)">${a.time}</span></div>
+    </div>`).join('');
+}
+
+const WMO_ICON  = {0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',51:'🌦',61:'🌧',71:'🌨',80:'🌦',95:'⛈'};
+const WMO_LABEL = {0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',51:'Drizzle',61:'Rain',71:'Snow',80:'Showers',95:'Thunderstorm'};
+
+async function fetchWeather() {
+  const lat = localStorage.getItem('homepi_lat');
+  const lon = localStorage.getItem('homepi_lon');
+  if (!lat || !lon) return;
+  try {
+    const res  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`);
+    const data = await res.json();
+    const c = data.current;
+    document.getElementById('weatherTemp').textContent = `${Math.round(c.temperature_2m)}°C`;
+    document.getElementById('weatherCond').textContent = `${WMO_ICON[c.weathercode]||''} ${WMO_LABEL[c.weathercode]||'—'}`;
+  } catch(e) {}
+}
+fetchWeather();
+setInterval(fetchWeather, 10*60*1000);
+
+// Snapshot refresh — only ticks when dashboard is active
+setInterval(() => {
+  if (currentPage !== 'dashboard') return;
+  const img = document.querySelector('img.dash-cam-snap');
+  if (!img) return;
+  const url = new URL(img.src);
+  url.searchParams.set('t', Date.now());
+  img.src = url.toString();
+}, 5000); // refresh every 5 seconds
+
+function renderDashboard() {
+  if (!document.getElementById('statLightsOn')) return; // page not active
+  const all    = Object.values(devices);
+  const lights  = all.filter(d => d.type==='light');
+  const sensors = all.filter(d => d.type==='sensor');
+  const onCount = lights.filter(d => d.state==='ON').length;
+
+  document.getElementById('statLightsOn').textContent  = onCount;
+  document.getElementById('statLightsSub').textContent = `of ${lights.length} total`;
+  document.getElementById('statDevices').textContent   = all.length;
+
+  const sensor = sensors.find(s => s.temperature != null);
+  if (sensor) {
+    document.getElementById('statTemp').textContent      = `${sensor.temperature.toFixed(1)}°`;
+    document.getElementById('statTempSub').textContent   = sensor.name.toLowerCase();
+    document.getElementById('climateTemp').textContent    = `${sensor.temperature.toFixed(1)}°C`;
+    if (sensor.humidity != null)
+      document.getElementById('climateHumidity').textContent = `${Math.round(sensor.humidity)}%`;
+  }
+
+  // Dashboard camera thumbnail — use snapshot instead of live stream to avoid buffering
+  const cam1 = configuredCameras[1];
+  const dashInner  = document.getElementById('dashCamInner');
+  const dashBadge  = document.getElementById('dashCamBadge');
+  const dashLabel  = document.getElementById('dashCamLabel');
+  if (cam1 && dashInner) {
+    dashLabel.textContent = cam1.name;
+    dashBadge.textContent = 'LIVE';
+    dashBadge.style.background = 'rgba(74,222,128,.15)';
+    dashBadge.style.color = 'var(--green)';
+    document.getElementById('dashCamNoSignal').style.display = 'none';
+    // Remove any old iframe
+    const oldIframe = dashInner.querySelector('iframe');
+    if (oldIframe) oldIframe.remove();
+    // Use a snapshot image instead — no buffering, no white flash
+    let img = dashInner.querySelector('img.dash-cam-snap');
+    if (!img) {
+      img = document.createElement('img');
+      img.className = 'dash-cam-snap';
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+      dashInner.appendChild(img);
+    }
+    // Refresh snapshot — append timestamp to bust cache
+    img.src = `http://${window.location.hostname}:1984/api/frame.jpeg?src=cam1&t=${Date.now()}`;
+  } else if (dashInner) {
+    dashLabel.textContent = 'NO CAMERA';
+    dashBadge.textContent = 'OFFLINE';
+    dashBadge.style.background = 'rgba(248,113,113,.15)';
+    dashBadge.style.color = 'var(--red)';
+    const img = dashInner.querySelector('img.dash-cam-snap');
+    if (img) img.remove();
+    document.getElementById('dashCamNoSignal').style.display = 'flex';
+  }
+
+  const panel = document.getElementById('dashLightsPanel');
+  if (lights.length === 0) {
+    panel.innerHTML = `<div style="font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);padding:8px 0">No lights paired</div>`;
+  } else {
+    // Group lights by room
+    const grouped = groupByRoom(lights);
+    panel.innerHTML = grouped.map(({room, items}) => `
+      <div class="dash-room-group">
+        <div class="dash-room-label">${room.icon} ${room.name}
+          <span class="dash-room-count">${items.filter(l=>l.state==='ON').length}/${items.length}</span>
+        </div>
+        ${items.map(l => `
+          <div class="light-row ${l.state==='ON'?'on':'off'}">
+            <div class="light-row-icon">💡</div>
+            <div class="light-row-name">${l.name}</div>
+            <div class="light-row-state">${l.state==='ON'?'ON':'OFF'}</div>
+            <div class="toggle-sm ${l.state==='ON'?'on':''}" onclick="dashToggleLight('${l.id}')">
+              <div class="toggle-sm-knob"></div>
+            </div>
+          </div>`).join('')}
+      </div>`).join('');
+  }
+  renderActivityFeed();
+}
+
+function dashToggleLight(id) {
+  const d = devices[id]; if (!d) return;
+  const newState = d.state==='ON'?'OFF':'ON';
+  devices[id].state = newState;
+  renderDashboard();
+  addActivity(`${d.name} turned ${newState}`, true);
+  fetch(`${API}/devices/${id}/command`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:newState})}).catch(()=>{});
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ROOM HELPERS
+// ══════════════════════════════════════════════════════════════════════
+
+// Group a list of devices by room, with "Other" for unassigned
+function groupByRoom(deviceList) {
+  const groups = {};
+  // Init a slot for each room
+  rooms.forEach(r => { groups[r.id] = { room: r, items: [] }; });
+  // "Other" bucket for unassigned
+  const otherRoom = { id: '__other__', name: 'Other', icon: '📦' };
+  groups.__other__ = { room: otherRoom, items: [] };
+
+  deviceList.forEach(d => {
+    const rid = d.roomId && groups[d.roomId] ? d.roomId : '__other__';
+    groups[rid].items.push(d);
+  });
+
+  // Return only non-empty groups, Other always last
+  return Object.values(groups).filter(g => g.items.length > 0)
+    .sort((a, b) => {
+      if (a.room.id === '__other__') return 1;
+      if (b.room.id === '__other__') return -1;
+      return 0;
+    });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ROOM HELPERS
+// ══════════════════════════════════════════════════════════════════════
+
+function groupByRoom(deviceList) {
+  const groups = {};
+  rooms.forEach(r => { groups[r.id] = { room: r, items: [] }; });
+  const otherRoom = { id: '__other__', name: 'Other', icon: '📦' };
+  groups.__other__ = { room: otherRoom, items: [] };
+  deviceList.forEach(d => {
+    const rid = d.roomId && groups[d.roomId] ? d.roomId : '__other__';
+    groups[rid].items.push(d);
+  });
+  return Object.values(groups).filter(g => g.items.length > 0)
+    .sort((a,b) => a.room.id==='__other__' ? 1 : b.room.id==='__other__' ? -1 : 0);
+}
+
+function toggleRoom(roomId) {
+  const lights = Object.values(devices).filter(d => d.type==='light' && (
+    roomId==='__other__' ? (!d.roomId || !rooms.find(r=>r.id===d.roomId)) : d.roomId===roomId
+  ));
+  const anyOn = lights.some(d => d.state==='ON');
+  lights.forEach(d => {
+    devices[d.id].state = anyOn ? 'OFF' : 'ON';
+    const card = document.getElementById(`lc-${d.id}`);
+    if (card) updateLightCard(card, devices[d.id]);
+    sendCommand(d.id, { state: anyOn ? 'OFF' : 'ON' });
+  });
+  updateRoomHeader(roomId);
+  updateAllToggle();
+  if (currentPage === 'dashboard') renderDashboard();
+}
+
+function updateRoomHeader(roomId) {
+  const lights = Object.values(devices).filter(d => d.type==='light' && (
+    roomId==='__other__' ? (!d.roomId || !rooms.find(r=>r.id===d.roomId)) : d.roomId===roomId
+  ));
+  const anyOn = lights.some(d => d.state==='ON');
+  const toggle = document.getElementById(`rt-${roomId}`);
+  if (toggle) toggle.className = `room-all-toggle ${anyOn?'on':''}`;
+  const count = document.getElementById(`rc-${roomId}`);
+  if (count) count.textContent = `${lights.filter(d=>d.state==='ON').length}/${lights.length}`;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// LIGHTING
+// ══════════════════════════════════════════════════════════════════════
+const COLOURS = [
+  {name:'warm',  hex:'#ffcc66',r:255,g:180,b:60},
+  {name:'white', hex:'#f5f0e8',r:245,g:240,b:232},
+  {name:'cool',  hex:'#cce0ff',r:180,g:210,b:255},
+  {name:'red',   hex:'#ff6060',r:255,g:60, b:60},
+  {name:'orange',hex:'#ff9944',r:255,g:140,b:50},
+  {name:'green', hex:'#44dd88',r:50, g:200,b:100},
+  {name:'blue',  hex:'#4488ff',r:60, g:120,b:255},
+  {name:'purple',hex:'#aa66ff',r:160,g:80, b:255},
+  {name:'pink',  hex:'#ff66aa',r:255,g:80, b:160},
+];
+let pendingBrightness = {};
+let rafPending = {};
+const recentActivityLog = {}; // debounce WS duplicate activity entries
+
+function toggleAll() {
+  const lights = Object.values(devices).filter(d => d.type==='light');
+  const anyOn  = lights.some(d => d.state==='ON');
+  lights.forEach(d => sendCommand(d.id, {state: anyOn?'OFF':'ON'}));
+}
+
+function updateAllToggle() {
+  const lights = Object.values(devices).filter(d => d.type==='light');
+  const anyOn  = lights.some(d => d.state==='ON');
+  const btn    = document.getElementById('allToggleBtn');
+  if (btn) btn.className = 'all-toggle-btn' + (anyOn?' on':'');
+}
+
+async function sendCommand(id, cmd) {
+  try {
+    await fetch(`${API}/devices/${id}/command`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cmd)});
+  } catch(e) {}
+}
+
+function renderLighting(fullRebuild = false) {
+  const lights  = Object.values(devices).filter(d => d.type==='light');
+  const sensors = Object.values(devices).filter(d => d.type==='sensor');
+  const grid    = document.getElementById('lightsGrid');
+  const empty   = document.getElementById('emptyState');
+
+  if (!grid || !empty) return; // page not active yet
+  empty.style.display = lights.length===0 ? 'block' : 'none';
+
+  if (lights.length > 0) {
+    const grouped = groupByRoom(lights);
+
+    // Full rebuild on navigation, or if structure changed
+    const currentRoomIds = [...grid.querySelectorAll('.room-header')].map(h => h.id.replace('rh-',''));
+    const newRoomIds     = grouped.map(g => g.room.id);
+    const structureChanged = fullRebuild
+      || JSON.stringify(currentRoomIds) !== JSON.stringify(newRoomIds)
+      || grouped.some(({items}) => items.some(d => !document.getElementById(`lc-${d.id}`)));
+
+    if (structureChanged) {
+      // Full rebuild only when structure changes
+      grid.innerHTML = '';
+      grouped.forEach(({room, items}) => {
+        const anyOn = items.some(d => d.state==='ON');
+        const header = document.createElement('div');
+        header.className = 'room-header';
+        header.id = `rh-${room.id}`;
+        header.innerHTML = `
+          <div class="room-header-left">
+            <span class="room-icon">${room.icon}</span>
+            <span class="room-name">${room.name}</span>
+            <span class="room-count" id="rc-${room.id}">${items.filter(d=>d.state==='ON').length}/${items.length}</span>
+          </div>
+          <div class="room-all-toggle ${anyOn?'on':''}" id="rt-${room.id}" onclick="toggleRoom('${room.id}')" title="Toggle all in room">
+            <div class="room-all-knob"></div>
+          </div>`;
+        grid.appendChild(header);
+        items.forEach(d => grid.appendChild(buildLightCard(d)));
+      });
+    } else {
+      // Just update existing cards and room headers in place
+      grouped.forEach(({room, items}) => {
+        const anyOn = items.some(d => d.state==='ON');
+        const toggle = document.getElementById(`rt-${room.id}`);
+        if (toggle) toggle.className = `room-all-toggle ${anyOn?'on':''}`;
+        const count = document.getElementById(`rc-${room.id}`);
+        if (count) count.textContent = `${items.filter(d=>d.state==='ON').length}/${items.length}`;
+        items.forEach(d => {
+          const existing = document.getElementById(`lc-${d.id}`);
+          if (existing) updateLightCard(existing, d);
+        });
+      });
+    }
+  }
+
+  // Remove cards for devices that no longer exist
+  grid.querySelectorAll('.light-card').forEach(c => {
+    if (!devices[c.id.replace('lc-','')]) c.remove();
+  });
+
+  // Sensors
+  const sensorSection = document.getElementById('sensorSection');
+  const sensorGrid    = document.getElementById('sensorGrid');
+  if (sensors.length > 0) {
+    sensorSection.style.display = 'block';
+    sensors.forEach(d => {
+      const ex = document.getElementById(`sc-${d.id}`);
+      if (ex) {
+        const val = ex.querySelector('.sensor-value');
+        if (val && d.temperature!=null) val.textContent = `${d.temperature.toFixed(1)}°`;
+      } else {
+        sensorGrid.appendChild(buildSensorCard(d));
+      }
+    });
+  } else {
+    sensorSection.style.display = 'none';
+  }
+  updateAllToggle();
+}
+
+function updateLightCard(card, d) {
+  const isOn = d.state==='ON';
+  card.className = `light-card ${isOn?'on':''}`;
+  const slider   = card.querySelector('.brightness-slider');
+  const pct      = card.querySelector('.slider-label');
+  const stateTxt = card.querySelector('.state-text');
+  const dot      = card.querySelector('.state-dot');
+  const bPct     = Math.round(((d.brightness||254)/254)*100);
+  if (slider && !slider.matches(':active')) {
+    slider.value    = bPct;
+    slider.disabled = !isOn;
+    if (pct) pct.textContent = `${bPct}%`;
+  }
+  if (stateTxt) stateTxt.textContent = isOn ? `ON · ${bPct}%` : 'OFF';
+  // state-dot color handled by parent .light-card.on CSS
+  card.querySelectorAll('.swatch').forEach(s => {
+    s.style.pointerEvents = isOn ? '' : 'none';
+    s.style.opacity       = isOn ? '' : '0.3';
+  });
+  const cpInput = card.querySelector('.colour-picker-input');
+  if (cpInput) cpInput.disabled = !isOn;
+}
+
+function buildLightCard(d) {
+  const isOn = d.state==='ON';
+  const bPct = Math.round(((d.brightness||254)/254)*100);
+  const card = document.createElement('div');
+  card.className = `light-card ${isOn?'on':''}`;
+  card.id = `lc-${d.id}`;
+  const swatchHtml = COLOURS.map(c =>
+    `<div class="swatch" style="background:${c.hex};${!isOn?'pointer-events:none;opacity:.3':''}" title="${c.name}"
+      onclick="setColour('${d.id}',${c.r},${c.g},${c.b},this)"></div>`
+  ).join('');
+  card.innerHTML = `
+    <div class="card-top">
+      <div class="bulb-icon">💡</div>
+      <div class="card-info">
+        <div class="card-name">${d.name}</div>
+        <div class="card-state"><div class="state-dot"></div><span class="state-text">${isOn?`ON · ${bPct}%`:'OFF'}</span></div>
+      </div>
+      <div class="power-btn" onclick="togglePower('${d.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M6.8 4.8a9 9 0 1 0 10.4 0"/></svg></div>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">${bPct}%</span>
+      <input type="range" class="brightness-slider" min="1" max="100" value="${bPct}" ${!isOn?'disabled':''}
+        oninput="onBrightnessInput('${d.id}',this)">
+    </div>
+    <div class="colour-row">
+      ${swatchHtml}
+      <div class="colour-picker-wrap" title="Custom colour">
+        <div class="colour-picker-btn"></div>
+        <input type="color" class="colour-picker-input" ${!isOn?'disabled':''} onchange="onColourPicker('${d.id}',this)">
+      </div>
+    </div>`;
+  return card;
+}
+
+function buildSensorCard(d) {
+  const card = document.createElement('div');
+  card.className='sensor-card'; card.id=`sc-${d.id}`;
+  card.innerHTML=`<div class="sensor-icon">🌡</div><div><div class="sensor-value">${d.temperature!=null?`${d.temperature.toFixed(1)}°`:'—'}</div><div class="sensor-label">${d.name}</div></div>`;
+  return card;
+}
+
+function togglePower(id) {
+  const d = devices[id]; if (!d) return;
+  const newState = d.state==='ON'?'OFF':'ON';
+  devices[id].state = newState;
+  recentActivityLog[`${id}-${newState}`] = Date.now();
+  addActivity(`${d.name} turned ${newState}`, true);
+  // Update card directly — don't go through renderLighting
+  const card = document.getElementById(`lc-${id}`);
+  if (card) updateLightCard(card, devices[id]);
+  // Update room header toggle + count
+  const roomId = devices[id].roomId || '__other__';
+  updateRoomHeader(roomId);
+  updateAllToggle();
+  if (currentPage === 'dashboard') renderDashboard();
+  sendCommand(id, {state: newState});
+}
+
+function onBrightnessInput(id,slider) {
+  const pct   = parseInt(slider.value);
+  const label = slider.closest('.slider-row').querySelector('.slider-label');
+  if (label) label.textContent = `${pct}%`;
+  const card  = document.getElementById(`lc-${id}`);
+  const st    = card?.querySelector('.state-text');
+  if (st) st.textContent = `ON · ${pct}%`;
+  pendingBrightness[id] = pct;
+  if (!rafPending[id]) {
+    rafPending[id] = requestAnimationFrame(() => {
+      sendCommand(id,{brightness:pendingBrightness[id]});
+      delete rafPending[id];
+    });
+  }
+}
+
+function setColour(id,r,g,b,el) {
+  document.getElementById(`lc-${id}`)?.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+  el?.classList.add('active');
+  sendCommand(id,{color:{r,g,b}});
+}
+
+function onColourPicker(id,input) {
+  const hex=input.value, r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  document.getElementById(`lc-${id}`)?.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+  sendCommand(id,{color:{r,g,b}});
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// DEVICES
+// ══════════════════════════════════════════════════════════════════════
+let scanInterval=null, scanSeconds=120, pendingRemoveId=null;
+
+function typeIcon(t){return{light:'💡',sensor:'🌡',switch:'🔌',contact:'🚪',motion:'👁'}[t]||'📡';}
+function signalBars(lq){const s=lq?Math.ceil((lq/255)*4):0;return[1,2,3,4].map(i=>`<div class="signal-bar ${i<=s?'active':''}"></div>`).join('');}
+
+function renderDevicesPage() {
+  const grid  = document.getElementById('deviceGrid');
+  const empty = document.getElementById('devEmptyState');
+  if (!grid || !empty) return; // page not active
+
+  // Combine zigbee devices + cameras into one list
+  const zigbee  = Object.values(devices);
+  const cameras = Object.values(configuredCameras).map(c => ({
+    id: `cam-${c.slot}`, name: c.name, type: 'camera',
+    slot: c.slot, rtsp: c.rtsp, _isCam: true
+  }));
+  const all = [...zigbee, ...cameras];
+
+  const counter = document.getElementById('deviceCount');
+  if (counter) counter.textContent = `${all.length} device${all.length!==1?'s':''}`;
+
+  if (all.length === 0) { empty.style.display='block'; grid.querySelectorAll('.device-card,.device-group').forEach(c=>c.remove()); return; }
+  empty.style.display = 'none';
+
+  // Group by type
+  const groups = { light:[], sensor:[], camera:[], switch:[], contact:[], motion:[], unknown:[] };
+  all.forEach(d => { (groups[d.type] || groups.unknown).push(d); });
+
+  const groupOrder  = ['light','camera','sensor','switch','contact','motion','unknown'];
+  const groupLabels = { light:'Lights', camera:'Cameras', sensor:'Sensors', switch:'Switches', contact:'Contact Sensors', motion:'Motion Sensors', unknown:'Other' };
+
+  // Clear and rebuild by group
+  grid.querySelectorAll('.device-card,.device-group').forEach(c=>c.remove());
+
+  groupOrder.forEach(type => {
+    const group = groups[type];
+    if (!group || group.length === 0) return;
+
+    // Group header
+    const header = document.createElement('div');
+    header.className = 'device-group';
+    header.innerHTML = `<span>${groupLabels[type]}</span><span style="color:var(--surface3);font-size:9px">${group.length}</span>`;
+    grid.appendChild(header);
+
+    group.forEach(device => {
+      grid.appendChild(device._isCam ? buildCameraDeviceCard(device) : buildDeviceCard(device));
+    });
+  });
+}
+
+function buildCameraDeviceCard(cam) {
+  const card = document.createElement('div');
+  card.className = 'device-card'; card.id = `dev-cam-${cam.slot}`;
+  card.innerHTML = `
+    <div class="device-icon">📷</div>
+    <div class="device-info">
+      <div class="device-name-wrap">
+        <div class="device-name">${cam.name}</div>
+      </div>
+      <div class="device-meta">
+        <span class="type-badge type-camera" style="background:rgba(96,165,250,.1);color:var(--blue)">camera</span>
+        <span style="color:var(--muted);font-size:9px">CAM ${cam.slot}</span>
+      </div>
+    </div>
+    <div class="device-actions">
+      <div class="state-indicator state-on" style="color:var(--green)">LIVE</div>
+      <div class="remove-btn" onclick="confirmRemoveCam(${cam.slot},'${cam.name}')" title="Remove">✕</div>
+    </div>`;
+  return card;
+}
+
+function confirmRemoveCam(slot, name) {
+  document.getElementById('confirmText').innerHTML = `Remove camera <strong style="color:var(--text)">${name}</strong>?<br>You can re-add it at any time.`;
+  document.getElementById('confirmRemoveBtn').onclick = () => removeCam(slot);
+  document.getElementById('confirmOverlay').classList.remove('hidden');
+}
+
+async function removeCam(slot) {
+  hideConfirm();
+  try {
+    await fetch(`${API}/cameras/${slot}`, { method: 'DELETE' });
+    await loadCamerasFromAPI();
+    renderDevicesPage();
+  } catch(e) {}
+}
+
+function buildDeviceCard(device) {
+  const card = document.createElement('div');
+  card.className='device-card'; card.id=`dev-${device.id}`;
+  const stateHtml = device.type==='light'
+    ? `<div class="state-indicator ${device.state==='ON'?'state-on':'state-off'}">${device.state||'—'}</div>`
+    : device.type==='sensor'&&device.temperature!=null
+    ? `<div class="state-indicator state-off" style="color:var(--blue)">${device.temperature.toFixed(1)}°C</div>`
+    : '';
+  const currentRoom = rooms.find(r => r.id === device.roomId);
+  const roomOptions = [
+    `<option value="">— no room —</option>`,
+    ...rooms.map(r => `<option value="${r.id}" ${device.roomId===r.id?'selected':''}>${r.icon} ${r.name}</option>`)
+  ].join('');
+  card.innerHTML = `
+    <div class="device-icon">${typeIcon(device.type)}</div>
+    <div class="device-info">
+      <div class="device-name-wrap">
+        <div class="device-name" id="name-${device.id}">${device.name}</div>
+        <div class="edit-btn" onclick="startEdit('${device.id}')" title="Rename">✎</div>
+      </div>
+      <div class="device-meta">
+        <span class="type-badge type-${device.type}">${device.type}</span>
+        <span style="color:var(--muted);font-size:9px">${device.manufacturer||''}</span>
+        <div class="signal">${signalBars(device.linkquality)}</div>
+      </div>
+      <select class="room-select" onchange="assignRoom('${device.id}',this.value)" title="Assign to room">${roomOptions}</select>
+    </div>
+    <div class="device-actions">
+      ${stateHtml}
+      <div class="remove-btn" onclick="confirmRemove('${device.id}','${device.name}')" title="Remove">✕</div>
+    </div>`;
+  return card;
+}
+
+async function assignRoom(deviceId, roomId) {
+  devices[deviceId].roomId = roomId || null;
+  try {
+    await fetch(`${API}/devices/${deviceId}/assign-room`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId: roomId || null })
+    });
+    if (currentPage === 'lighting') renderLighting();
+    if (currentPage === 'dashboard') renderDashboard();
+  } catch(e) {}
+}
+
+function startEdit(id) {
+  const device=devices[id]; if(!device) return;
+  const nameEl=document.getElementById(`name-${id}`);
+  const wrap=nameEl.parentElement;
+  wrap.innerHTML=`<input class="name-input" id="nameInput-${id}" value="${device.name}" maxlength="40"><div class="name-save" onclick="saveEdit('${id}')">SAVE</div>`;
+  const input=document.getElementById(`nameInput-${id}`);
+  input.focus(); input.select();
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')saveEdit(id);if(e.key==='Escape')cancelEdit(id);});
+}
+
+async function saveEdit(id) {
+  const input=document.getElementById(`nameInput-${id}`); if(!input) return;
+  const newName=input.value.trim(); if(!newName) return;
+  try {
+    const res=await fetch(`${API}/devices/${id}/rename`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:newName})});
+    const data=await res.json();
+    if(data.success) await fetchDevices();
+  } catch(e) { cancelEdit(id); }
+}
+
+function cancelEdit(id) {
+  const device=devices[id]; if(!device) return;
+  const input=document.getElementById(`nameInput-${id}`); if(!input) return;
+  const wrap=input.parentElement;
+  wrap.innerHTML=`<div class="device-name" id="name-${id}">${device.name}</div><div class="edit-btn" onclick="startEdit('${id}')" title="Rename">✎</div>`;
+}
+
+function confirmRemove(id,name) {
+  pendingRemoveId=id;
+  document.getElementById('confirmText').innerHTML=`Remove <strong style="color:var(--text)">${name}</strong> from the network?<br>You'll need to re-pair it to use it again.`;
+  document.getElementById('confirmRemoveBtn').onclick=()=>removeDevice(id);
+  document.getElementById('confirmOverlay').classList.remove('hidden');
+}
+function hideConfirm(){document.getElementById('confirmOverlay').classList.add('hidden');pendingRemoveId=null;}
+
+async function removeDevice(id) {
+  hideConfirm();
+  try { await fetch(`${API}/devices/${id}`,{method:'DELETE'}); delete devices[id]; renderDevicesPage(); } catch(e){}
+}
+
+// ── Rooms modal ──────────────────────────────────────────────────────
+function openRoomsModal() {
+  renderRoomsList();
+  document.getElementById('roomIconInput').value = '';
+  document.getElementById('roomNameInput').value = '';
+  document.getElementById('roomAddError').style.display = 'none';
+  document.getElementById('roomsModal').classList.remove('hidden');
+}
+
+function closeRoomsModal() {
+  document.getElementById('roomsModal').classList.add('hidden');
+  // Re-render devices so room dropdowns update
+  renderDevicesPage();
+}
+
+function renderRoomsList() {
+  const list = document.getElementById('roomsList');
+  if (rooms.length === 0) {
+    list.innerHTML = `<div style="font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);text-align:center;padding:16px 0">No rooms yet. Add one below.</div>`;
+    return;
+  }
+  list.innerHTML = rooms.map(r => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+      <span style="font-size:18px">${r.icon}</span>
+      <span style="flex:1;font-size:11px;font-weight:600">${r.name}</span>
+      <span style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted)">
+        ${Object.values(devices).filter(d=>d.roomId===r.id).length} device(s)
+      </span>
+      <div class="remove-btn" onclick="deleteRoom('${r.id}')" title="Delete room">✕</div>
+    </div>`).join('');
+}
+
+async function addRoom() {
+  const icon = document.getElementById('roomIconInput').value.trim() || '🏠';
+  const name = document.getElementById('roomNameInput').value.trim();
+  const errEl = document.getElementById('roomAddError');
+  if (!name) { errEl.textContent='Room name is required.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
+  try {
+    const res  = await fetch(`${API}/rooms/add`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, icon })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    await loadRooms();
+    renderRoomsList();
+    document.getElementById('roomIconInput').value = '';
+    document.getElementById('roomNameInput').value = '';
+    if (currentPage === 'lighting') renderLighting();
+    if (currentPage === 'dashboard') renderDashboard();
+  } catch(e) { errEl.textContent=e.message; errEl.style.display='block'; }
+}
+
+async function deleteRoom(id) {
+  try {
+    await fetch(`${API}/rooms/${id}`, { method:'DELETE' });
+    // Unassign locally
+    Object.values(devices).forEach(d => { if (d.roomId===id) d.roomId=null; });
+    await loadRooms();
+    renderRoomsList();
+    if (currentPage === 'lighting') renderLighting();
+    if (currentPage === 'dashboard') renderDashboard();
+  } catch(e) {}
+}
+
+// ── Rooms modal ──────────────────────────────────────────────────────
+function openRoomsModal() {
+  renderRoomsList();
+  document.getElementById('roomIconInput').value = '';
+  document.getElementById('roomNameInput').value = '';
+  document.getElementById('roomAddError').style.display = 'none';
+  document.getElementById('roomsModal').classList.remove('hidden');
+}
+
+function closeRoomsModal() {
+  document.getElementById('roomsModal').classList.add('hidden');
+  renderDevicesPage();
+}
+
+function renderRoomsList() {
+  const list = document.getElementById('roomsList');
+  if (rooms.length === 0) {
+    list.innerHTML = `<div style="font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);text-align:center;padding:16px 0">No rooms yet. Add one below.</div>`;
+    return;
+  }
+  list.innerHTML = rooms.map(r => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+      <span style="font-size:18px">${r.icon}</span>
+      <span style="flex:1;font-size:11px;font-weight:600">${r.name}</span>
+      <span style="font-family:'Fira Code',monospace;font-size:8px;color:var(--muted)">
+        ${Object.values(devices).filter(d=>d.roomId===r.id).length} device(s)
+      </span>
+      <div class="remove-btn" onclick="deleteRoom('${r.id}')" title="Delete room">✕</div>
+    </div>`).join('');
+}
+
+async function addRoom() {
+  const icon  = document.getElementById('roomIconInput').value.trim() || '🏠';
+  const name  = document.getElementById('roomNameInput').value.trim();
+  const errEl = document.getElementById('roomAddError');
+  if (!name) { errEl.textContent='Room name is required.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
+  try {
+    const res  = await fetch(`${API}/rooms/add`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, icon })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    await loadRooms();
+    renderRoomsList();
+    document.getElementById('roomIconInput').value = '';
+    document.getElementById('roomNameInput').value = '';
+    if (currentPage==='lighting')  renderLighting();
+    if (currentPage==='dashboard') renderDashboard();
+  } catch(e) { errEl.textContent=e.message; errEl.style.display='block'; }
+}
+
+async function deleteRoom(id) {
+  try {
+    await fetch(`${API}/rooms/${id}`, { method:'DELETE' });
+    Object.values(devices).forEach(d => { if (d.roomId===id) d.roomId=null; });
+    await loadRooms();
+    renderRoomsList();
+    if (currentPage==='lighting')  renderLighting();
+    if (currentPage==='dashboard') renderDashboard();
+  } catch(e) {}
+}
+
+async function startPairing() {
+  try {
+    await fetch(`${API}/pairing/start`,{method:'POST'});
+    document.getElementById('scanBanner').classList.remove('hidden');
+    document.getElementById('addBtn').classList.add('scanning');
+    document.getElementById('addBtn').innerHTML='<span>◉</span> SCANNING...';
+    scanSeconds=120; updateTimer();
+    scanInterval=setInterval(()=>{scanSeconds--;updateTimer();if(scanSeconds<=0)stopPairing();},1000);
+  } catch(e){}
+}
+
+async function stopPairing() {
+  clearInterval(scanInterval); scanInterval=null;
+  document.getElementById('scanBanner').classList.add('hidden');
+  document.getElementById('addBtn').classList.remove('scanning');
+  document.getElementById('addBtn').innerHTML='<span>＋</span> ADD DEVICE';
+  try { await fetch(`${API}/pairing/stop`,{method:'POST'}); } catch(e){}
+}
+
+function updateTimer(){const m=Math.floor(scanSeconds/60),s=(scanSeconds%60).toString().padStart(2,'0');document.getElementById('scanTimer').textContent=`${m}:${s}`;}
+
+// ══════════════════════════════════════════════════════════════════════
+// CAMERAS
+// ══════════════════════════════════════════════════════════════════════
+let configuredCameras = {}; // slot -> camera object
+let rooms = []; // loaded from API
+
+async function loadRooms() {
+  try {
+    const res = await fetch(`${API}/rooms`);
+    rooms = await res.json();
+  } catch(e) { rooms = []; }
+}
+let selectedCamSlot   = 1;
+let camAlerts         = [];
+let activeFilter      = 'all';
+let camSetupSlot      = 1;
+
+async function loadCamerasFromAPI() {
+  try {
+    const res  = await fetch(`${API}/cameras`);
+    const list = await res.json();
+    configuredCameras = {};
+    list.forEach(c => { configuredCameras[c.slot] = c; });
+    updateCamSlotUI();
+    selectCam(selectedCamSlot);
+    if (list.length > 0) document.getElementById('setupBanner').style.display = 'none';
+  if (currentPage === 'devices') renderDevicesPage();
+  } catch(e) {}
+}
+
+function updateCamSlotUI() {
+  [1,2,3].forEach(slot => {
+    const el  = document.getElementById(`slot-${slot}`);
+    if (!el) return;
+    const cam = configuredCameras[slot];
+    el.classList.toggle('active', !!cam);
+    el.querySelector('.cam-slot-label').textContent = cam ? cam.name : `CAM ${slot}`;
+  });
+}
+
+function selectCam(slot) {
+  selectedCamSlot = slot;
+  document.querySelectorAll('.cam-slot').forEach(s => s.classList.remove('selected'));
+  const slotEl = document.getElementById(`slot-${slot}`);
+  if (slotEl) slotEl.classList.add('selected');
+
+  const cam    = configuredCameras[slot];
+  const overlay = document.getElementById('camOverlay');
+  const dot     = document.getElementById('camStatusDot');
+  const label   = document.getElementById('camStatusLabel');
+  const focus   = document.getElementById('camFocus');
+
+  document.getElementById('camName').textContent = cam ? cam.name : `CAM ${slot}`;
+
+  if (cam) {
+    overlay.style.display = 'none';
+    dot.classList.add('active');
+    label.textContent = 'LIVE';
+    let iframe = focus.querySelector('iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;inset:0;';
+      focus.appendChild(iframe);
+    }
+    iframe.src = `http://${window.location.hostname}:1984/stream.html?src=cam${slot}`;
+  } else {
+    overlay.style.display = 'flex';
+    dot.classList.remove('active');
+    label.textContent = 'NO SIGNAL';
+    document.getElementById('camOverlayMsg').innerHTML =
+      `NO CAMERA CONFIGURED<br><br><a onclick="openCamSetup(${slot})" style="color:var(--accent)">+ SET UP CAMERA →</a>`;
+    const iframe = focus.querySelector('iframe');
+    if (iframe) iframe.remove();
+  }
+}
+
+// ── Setup modal ───────────────────────────────────────────────────────
+let camSetupType = 'tapo';
+
+function openCamSetup(slot) {
+  camSetupSlot = slot || nextFreeSlot();
+  // Reset all inputs
+  ['camInputName','camInputIp','camInputUser','camInputPass','camInputNameManual','camInputRtsp'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('camInputName').value = `CAM ${camSetupSlot}`;
+  document.getElementById('camInputNameManual').value = `CAM ${camSetupSlot}`;
+  document.getElementById('camSetupError').style.display = 'none';
+  document.getElementById('camSetupErrorManual').style.display = 'none';
+  // Reset type selection
+  camSelectType('tapo');
+  showCamStep(1);
+  document.getElementById('camSetupOverlay').classList.remove('hidden');
+}
+
+function closeCamSetup() {
+  document.getElementById('camSetupOverlay').classList.add('hidden');
+}
+
+function camSelectType(type) {
+  camSetupType = type;
+  const tapoEl   = document.getElementById('camTypeTapo');
+  const manualEl = document.getElementById('camTypeManual');
+  const accent   = 'border-color:rgba(232,197,71,.5);background:rgba(232,197,71,.05)';
+  const normal   = 'border-color:var(--border2);background:transparent';
+  tapoEl.style.cssText   = `padding:14px 16px;border:1px solid;border-radius:12px;cursor:pointer;transition:all .15s;${type==='tapo'?accent:normal}`;
+  manualEl.style.cssText = `padding:14px 16px;border:1px solid;border-radius:12px;cursor:pointer;transition:all .15s;${type==='manual'?accent:normal}`;
+}
+
+function camTypeNext() {
+  if (camSetupType === 'tapo')   showCamStep('2a');
+  if (camSetupType === 'manual') showCamStep('2c');
+}
+
+function showCamStep(n) {
+  ['1','2a','2b','2c','3','4'].forEach(i => {
+    const el = document.getElementById(`camStep${i}`);
+    if (el) el.style.display = String(i) === String(n) ? 'block' : 'none';
+  });
+}
+
+function nextFreeSlot() {
+  for (let i=1;i<=3;i++) if (!configuredCameras[i]) return i;
+  return 1;
+}
+
+async function saveCamSetup(type) {
+  let name, rtsp, errEl;
+
+  if (type === 'tapo') {
+    name           = document.getElementById('camInputName').value.trim();
+    const ip       = document.getElementById('camInputIp').value.trim();
+    const username = document.getElementById('camInputUser').value.trim();
+    const password = document.getElementById('camInputPass').value.trim();
+    errEl          = document.getElementById('camSetupError');
+    if (!ip || !username || !password) {
+      errEl.textContent = 'Please fill in all fields.';
+      errEl.style.display = 'block'; return;
+    }
+    rtsp = `rtsp://${username}:${password}@${ip}/stream1`;
+  } else {
+    name  = document.getElementById('camInputNameManual').value.trim();
+    rtsp  = document.getElementById('camInputRtsp').value.trim();
+    errEl = document.getElementById('camSetupErrorManual');
+    if (!rtsp) {
+      errEl.textContent = 'Please enter an RTSP URL.';
+      errEl.style.display = 'block'; return;
+    }
+    if (!rtsp.startsWith('rtsp://')) {
+      errEl.textContent = 'URL must start with rtsp://';
+      errEl.style.display = 'block'; return;
+    }
+  }
+
+  showCamStep(3);
+
+  try {
+    const res  = await fetch(`${API}/cameras/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slot: camSetupSlot, name: name || `CAM ${camSetupSlot}`, rtsp })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Setup failed');
+    await loadCamerasFromAPI();
+    selectCam(camSetupSlot);
+    showCamStep(4);
+  } catch(e) {
+    showCamStep(type === 'tapo' ? '2b' : '2c');
+    errEl.textContent = `Error: ${e.message}`;
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Alerts ────────────────────────────────────────────────────────────
+function setFilter(type,el){activeFilter=type;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderCamAlerts();}
+
+function addCamAlert(type,camName,snapshot=null){
+  const now=new Date();
+  camAlerts.unshift({type,cam:camName,time:now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),snapshot});
+  if(camAlerts.length>50)camAlerts.pop();
+  if(currentPage==='cameras')renderCamAlerts();
+}
+
+function renderCamAlerts(){
+  const list=document.getElementById('alertsList'),noAlerts=document.getElementById('noAlerts');
+  const filtered=activeFilter==='all'?camAlerts:camAlerts.filter(a=>a.type===activeFilter);
+  if(filtered.length===0){noAlerts.style.display='flex';list.querySelectorAll('.alert-item').forEach(el=>el.remove());return;}
+  noAlerts.style.display='none';
+  list.querySelectorAll('.alert-item').forEach(el=>el.remove());
+  filtered.forEach(a=>{
+    const div=document.createElement('div');div.className='alert-item';
+    div.innerHTML=`<div class="alert-row"><div class="alert-type ${a.type}">${a.type==='person'?'🧍 PERSON':a.type==='motion'?'⚡ MOTION':'🔵 SYSTEM'}</div><div class="alert-time">${a.time}</div></div><div class="alert-cam">${a.cam}</div>`;
+    list.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// CAMERA CONTROLS — mock toolbar + joystick
+// ══════════════════════════════════════════════════════════════════════
+
+// Toolbar toggles (mock — logs intent, ready for real API)
+const camToolState = { night: false, privacy: false, flip: false };
+
+function camToolToggle(key, el) {
+  camToolState[key] = !camToolState[key];
+  el.classList.toggle('active', camToolState[key]);
+  console.log(`[CAM] ${key} → ${camToolState[key] ? 'ON' : 'OFF'}`);
+  // TODO: call real camera API
+  // e.g. fetch(`${API}/cameras/${selectedCamSlot}/control`, { method:'POST', body: JSON.stringify({[key]: camToolState[key]}) })
+}
+
+function camToolAction(action) {
+  console.log(`[CAM] action: ${action}`);
+  // TODO: call real camera API
+}
+
+// Joystick drag
+(function initJoystick() {
+  const base  = document.getElementById('joystickBase');
+  const knob  = document.getElementById('joystickKnob');
+  if (!base || !knob) return;
+
+  const RADIUS = 20; // max px the knob can travel from center
+  let dragging = false, startX = 0, startY = 0;
+
+  function getCenter() {
+    const r = base.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  function moveKnob(cx, cy) {
+    const center = getCenter();
+    let dx = cx - center.x;
+    let dy = cy - center.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist > RADIUS) { dx = dx/dist*RADIUS; dy = dy/dist*RADIUS; }
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+    // Normalise -1..1 and log direction (ready for real PTZ)
+    const nx = +(dx/RADIUS).toFixed(2);
+    const ny = +(dy/RADIUS).toFixed(2);
+    if (Math.abs(nx) > 0.1 || Math.abs(ny) > 0.1) {
+      console.log(`[PTZ] x:${nx} y:${ny}`);
+      // TODO: send to camera API
+    }
+  }
+
+  function resetKnob() {
+    knob.style.transition = 'transform .2s ease';
+    knob.style.transform  = 'translate(-50%, -50%)';
+    setTimeout(() => knob.style.transition = '', 200);
+  }
+
+  base.addEventListener('mousedown', e => {
+    dragging = true;
+    knob.style.transition = '';
+    e.preventDefault();
+  });
+  base.addEventListener('touchstart', e => {
+    dragging = true;
+    knob.style.transition = '';
+  }, { passive: true });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    moveKnob(e.clientX, e.clientY);
+  });
+  document.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    moveKnob(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  document.addEventListener('mouseup',  () => { if (dragging) { dragging = false; resetKnob(); } });
+  document.addEventListener('touchend', () => { if (dragging) { dragging = false; resetKnob(); } });
+})();
+
+// ── Alerts panel toggle + drag resize ────────────────────────────────
+let alertsPanelOpen = false;
+let isResizing = false;
+
+function toggleAlerts() {
+  alertsPanelOpen = !alertsPanelOpen;
+  const panel = document.getElementById('alertsPanel');
+  const btn   = document.getElementById('alertsToggleBtn');
+  panel.classList.toggle('open', alertsPanelOpen);
+  if (btn) btn.textContent = alertsPanelOpen ? '◀' : '▶';
+}
+
+// Drag-to-resize
+const resizeHandle = document.getElementById('alertsResize');
+if (resizeHandle) {
+  resizeHandle.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('alerts-toggle')) return; // let click handle toggle
+    isResizing = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+}
+
+document.addEventListener('mousemove', e => {
+  if (!isResizing) return;
+  const page  = document.getElementById('page-cameras');
+  const panel = document.getElementById('alertsPanel');
+  if (!page || !panel) return;
+  const rect  = page.getBoundingClientRect();
+  const newW  = Math.max(0, Math.min(400, rect.right - e.clientX));
+  if (newW < 40) {
+    panel.classList.remove('open');
+    panel.style.width = '0';
+    alertsPanelOpen = false;
+    document.getElementById('alertsToggleBtn').textContent = '▶';
+  } else {
+    panel.classList.add('open');
+    panel.style.width = newW + 'px';
+    alertsPanelOpen = true;
+    document.getElementById('alertsToggleBtn').textContent = '◀';
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (isResizing) {
+    isResizing = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+});
+
+// startup handled above
+</script>
+<script src="/sidebar.js"></script>
+<script>initSidebar("dashboard");</script>
+</body>
+</html>

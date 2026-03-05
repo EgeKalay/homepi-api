@@ -435,8 +435,8 @@
           `${tempDevice.temperature.toFixed(1)}<em>°C</em>`;
       }
 
-      // Lights
-      const lights = devices.filter(d => d.type === 'light');
+      // Lights — match by type or by presence of on/off state (bulbs before definition loads)
+      const lights = devices.filter(d => d.type === 'light' || (d.state === 'ON' || d.state === 'OFF'));
       const row = document.getElementById('lightsRow');
       row.innerHTML = lights.map(l =>
         `<div class="light-dot ${l.state === 'ON' ? 'on' : ''}" title="${l.name}"></div>`
@@ -471,7 +471,7 @@
   function navigate() {
     screen.classList.add('leaving');
     setTimeout(() => {
-      window.location.href = '/index.html';
+      window.location.href = '/app.html';
     }, 450);
   }
 </script>

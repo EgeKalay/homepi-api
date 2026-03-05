@@ -1,0 +1,5 @@
+api:
+  listen: ":1984"
+
+streams:
+  cam1: rtsp://homepicamera:letmelogintomytopecamera@192.168.1.107/stream1
